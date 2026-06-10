@@ -4,6 +4,8 @@ from db.elastic import index_packets
 from db.postgres import get_pool
 from config import PCAP_STORAGE
 import pyshark
+from ml.anomaly import score_session
+from detection.signatures import run_all_signatures
 
 router = APIRouter()
 
@@ -69,12 +71,30 @@ async def upload_pcap(file: UploadFile = File(...)):
     packets = await asyncio.to_thread(parse_pcap, filepath, session_id)
     index_packets(packets)
 
+    # Run detection
+    alerts = run_all_signatures(packets, session_id)
+    anomaly_score = score_session(packets)
+    if anomaly_score < -0.2:
+        alerts.append({
+            "rule_name": "ANOMALY",
+            "severity": "medium",
+            "src_ip": "Session",
+            "dst_ip": "Session",
+            "description": f"Isolation Forest anomaly detected. Score: {anomaly_score:.2f}"
+        })
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
-            "INSERT INTO sessions (session_id, filename, sha256_hash, packet_count, status) VALUES ($1, $2, $3, $4, 'complete')",
-            session_id, file.filename, sha256, len(packets)
+            "INSERT INTO sessions (session_id, filename, sha256_hash, packet_count, anomaly_score, status) VALUES ($1, $2, $3, $4, $5, 'complete')",
+            session_id, file.filename, sha256, len(packets), anomaly_score
         )
+        
+        for a in alerts:
+            await conn.execute(
+                "INSERT INTO alerts (session_id, rule_name, severity, src_ip, dst_ip, description) VALUES ($1, $2, $3, $4, $5, $6)",
+                session_id, a["rule_name"], a["severity"], a["src_ip"], a["dst_ip"], a["description"]
+            )
 
     return {
         "session_id": session_id,
