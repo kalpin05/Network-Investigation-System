@@ -1,0 +1,36 @@
+rules:
+  - name: "DNS_TUNNEL"
+    enabled: true
+    severity: "critical"
+    thresholds:
+      min_length: 40
+      min_entropy: 3.5
+
+  - name: "ICMP_COVERT"
+    enabled: true
+    severity: "medium"
+    thresholds:
+      min_packet_length: 42
+
+  - name: "MALWARE_PORT"
+    enabled: true
+    severity: "high"
+    ports: [4444, 31337, 6667, 1080, 9001]
+
+  - name: "PORT_SCAN"
+    enabled: true
+    severity: "high"
+    thresholds:
+      max_unique_ports: 20
+
+  - name: "SYN_FLOOD"
+    enabled: true
+    severity: "critical"
+    thresholds:
+      max_syn_count: 500
+
+  - name: "LARGE_EXFILTRATION"
+    enabled: true
+    severity: "high"
+    thresholds:
+      max_bytes: 50000000

@@ -9,7 +9,7 @@ def shannon_entropy(s: str) -> float:
     probs = [f/len(s) for f in freq.values()]
     return -sum(p * math.log2(p) for p in probs if p > 0)
 
-def detect_dns_tunnel(dns_query: str) -> dict | None:
+def detect_dns_tunnel(dns_query: str, min_length: int = 40, min_entropy: float = 3.5) -> dict | None:
     if not dns_query:
         return None
     
@@ -17,7 +17,7 @@ def detect_dns_tunnel(dns_query: str) -> dict | None:
     entropy = shannon_entropy(subdomain)
     length = len(subdomain)
 
-    if length > 40 and entropy > 3.5:
+    if length > min_length and entropy > min_entropy:
         return {
             "rule_name": "DNS_TUNNEL",
             "severity": "critical",

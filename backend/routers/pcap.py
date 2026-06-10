@@ -1,5 +1,5 @@
 import os, hashlib, uuid, math, asyncio
-from fastapi import APIRouter, UploadFile, File, Depends
+from fastapi import APIRouter, UploadFile, File, Depends, WebSocket, WebSocketDisconnect
 from db.elastic import index_packets
 from db.postgres import get_pool
 from config import PCAP_STORAGE
@@ -127,3 +127,33 @@ async def get_session_packets(session_id: str, limit: int = 100):
         return packets
     except Exception as e:
         return {"error": str(e)}
+
+@router.websocket("/ws/capture")
+async def websocket_capture(websocket: WebSocket):
+    await websocket.accept()
+    from scapy.all import AsyncSniffer, IP, TCP, UDP
+    import time
+    
+    loop = asyncio.get_running_loop()
+    queue = asyncio.Queue()
+
+    def packet_callback(pkt):
+        if IP in pkt:
+            packet_data = {
+                "src_ip": pkt[IP].src,
+                "dst_ip": pkt[IP].dst,
+                "protocol": "TCP" if TCP in pkt else ("UDP" if UDP in pkt else "Other"),
+                "packet_length": len(pkt),
+                "timestamp": time.time()
+            }
+            loop.call_soon_threadsafe(queue.put_nowait, packet_data)
+
+    sniffer = AsyncSniffer(prn=packet_callback, store=False)
+    sniffer.start()
+
+    try:
+        while True:
+            packet_data = await queue.get()
+            await websocket.send_json(packet_data)
+    except WebSocketDisconnect:
+        sniffer.stop()
