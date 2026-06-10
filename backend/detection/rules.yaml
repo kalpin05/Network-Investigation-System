@@ -34,3 +34,8 @@ rules:
     severity: "high"
     thresholds:
       max_bytes: 50000000
+
+  - name: "SUSPICIOUS_TLD_POST"
+    enabled: true
+    severity: "high"
+    tlds: [".xyz", ".top", ".pw", ".ru", ".cc", ".su"]

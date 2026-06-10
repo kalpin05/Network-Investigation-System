@@ -29,6 +29,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
     port_scan_rule = RULES.get("PORT_SCAN", {})
     syn_flood_rule = RULES.get("SYN_FLOOD", {})
     large_exfil_rule = RULES.get("LARGE_EXFILTRATION", {})
+    suspicious_tld_rule = RULES.get("SUSPICIOUS_TLD_POST", {})
 
     for pkt in packets:
         src_ip = pkt.get("src_ip", "0.0.0.0")
@@ -39,6 +40,8 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
         packet_length = pkt.get("packet_length", 0)
         flags = pkt.get("flags", "")
         dns_query = pkt.get("dns_query", "")
+        http_host = pkt.get("http_host", "")
+        http_method = pkt.get("http_method", "")
 
         # 1. DNS Tunnel
         if dns_query and dns_rule.get("enabled"):
@@ -76,6 +79,18 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "src_ip": src_ip,
                     "dst_ip": dst_ip,
                     "description": f"Connection on known malware/C2 port {mal_port} detected."
+                })
+
+        # 4. HTTP POST to Suspicious TLD
+        if suspicious_tld_rule.get("enabled") and http_method.upper() == "POST" and http_host:
+            suspicious_tlds = suspicious_tld_rule.get("tlds", [])
+            if any(http_host.endswith(tld) for tld in suspicious_tlds):
+                alerts.append({
+                    "rule_name": "SUSPICIOUS_TLD_POST",
+                    "severity": suspicious_tld_rule.get("severity", "high"),
+                    "src_ip": src_ip,
+                    "dst_ip": dst_ip,
+                    "description": f"HTTP POST detected to suspicious TLD on host {http_host}."
                 })
 
         # Track for aggregate logic

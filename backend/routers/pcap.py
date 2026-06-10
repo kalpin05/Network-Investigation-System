@@ -36,6 +36,7 @@ def parse_pcap(filepath: str, session_id: str) -> list[dict]:
                 "flags": "",
                 "dns_query": "",
                 "http_host": "",
+                "http_method": "",
             }
             if hasattr(pkt, 'transport_layer') and pkt.transport_layer:
                 tl = pkt[pkt.transport_layer]
@@ -48,8 +49,11 @@ def parse_pcap(filepath: str, session_id: str) -> list[dict]:
             if hasattr(pkt, 'dns') and hasattr(pkt.dns, 'qry_name'):
                 doc["dns_query"] = str(pkt.dns.qry_name)
 
-            if hasattr(pkt, 'http') and hasattr(pkt.http, 'host'):
-                doc["http_host"] = str(pkt.http.host)
+            if hasattr(pkt, 'http'):
+                if hasattr(pkt.http, 'host'):
+                    doc["http_host"] = str(pkt.http.host)
+                if hasattr(pkt.http, 'request_method'):
+                    doc["http_method"] = str(pkt.http.request_method)
 
             packets.append(doc)
         except Exception:
