@@ -1,5 +1,6 @@
 import os
 import yaml
+from datetime import datetime
 from .dns_tunnel import detect_dns_tunnel
 
 def load_rules():
@@ -19,8 +20,8 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
     alerts = []
     
     # Trackers for aggregate rules
-    src_ports = {} # src_ip -> set of dst_port
-    src_syn_count = {} # src_ip -> count of SYN flags
+    src_ports = {} # src_ip -> { bucket_10s -> set of dst_port }
+    src_syn_count = {} # src_ip -> { bucket_1s -> count of SYN flags }
     src_bytes = {} # src_ip -> total outbound bytes
 
     dns_rule = RULES.get("DNS_TUNNEL", {})
@@ -94,41 +95,63 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                 })
 
         # Track for aggregate logic
-        if src_ip not in src_ports:
-            src_ports[src_ip] = set()
-            src_syn_count[src_ip] = 0
-            src_bytes[src_ip] = 0
+        timestamp_str = pkt.get("timestamp")
+        try:
+            # Replace Z with +00:00 for python 3.10 and earlier if needed, but 3.11 supports Z
+            ts = int(datetime.fromisoformat(timestamp_str.replace('Z', '+00:00')).timestamp())
+        except Exception:
+            ts = 0
 
-        src_ports[src_ip].add(dst_port)
+        bucket_10s = ts // 10
+        bucket_1s = ts
+
+        if src_ip not in src_ports:
+            src_ports[src_ip] = {}
+        if bucket_10s not in src_ports[src_ip]:
+            src_ports[src_ip][bucket_10s] = set()
+        src_ports[src_ip][bucket_10s].add(dst_port)
+
+        if src_ip not in src_syn_count:
+            src_syn_count[src_ip] = {}
+        if bucket_1s not in src_syn_count[src_ip]:
+            src_syn_count[src_ip][bucket_1s] = 0
+
+        if src_ip not in src_bytes:
+            src_bytes[src_ip] = 0
         src_bytes[src_ip] += packet_length
+
         flags_str = str(flags).upper()
         if protocol == "TCP" and "S" in flags_str and "A" not in flags_str:
-            src_syn_count[src_ip] += 1
+            src_syn_count[src_ip][bucket_1s] += 1
 
     # Aggregate evaluation
     if port_scan_rule.get("enabled"):
         max_ports = port_scan_rule.get("thresholds", {}).get("max_unique_ports", 20)
-        for src_ip, ports in src_ports.items():
-            if len(ports) > max_ports:
-                alerts.append({
-                    "rule_name": "PORT_SCAN",
-                    "severity": port_scan_rule.get("severity", "high"),
-                    "src_ip": src_ip,
-                    "dst_ip": "Multiple",
-                    "description": f"Port scan detected: {len(ports)} unique ports targeted."
-                })
+        for src_ip, buckets in src_ports.items():
+            for bkt, ports in buckets.items():
+                if len(ports) > max_ports:
+                    alerts.append({
+                        "rule_name": "PORT_SCAN",
+                        "severity": port_scan_rule.get("severity", "high"),
+                        "src_ip": src_ip,
+                        "dst_ip": "Multiple",
+                        "description": f"Port scan detected: {len(ports)} unique ports targeted in 10s."
+                    })
+                    break
 
     if syn_flood_rule.get("enabled"):
         max_syn = syn_flood_rule.get("thresholds", {}).get("max_syn_count", 500)
-        for src_ip, syns in src_syn_count.items():
-            if syns > max_syn:
-                alerts.append({
-                    "rule_name": "SYN_FLOOD",
-                    "severity": syn_flood_rule.get("severity", "critical"),
-                    "src_ip": src_ip,
-                    "dst_ip": "Multiple",
-                    "description": f"SYN flood detected: {syns} SYN packets sent without ACKs."
-                })
+        for src_ip, buckets in src_syn_count.items():
+            for bkt, syns in buckets.items():
+                if syns > max_syn:
+                    alerts.append({
+                        "rule_name": "SYN_FLOOD",
+                        "severity": syn_flood_rule.get("severity", "critical"),
+                        "src_ip": src_ip,
+                        "dst_ip": "Multiple",
+                        "description": f"SYN flood detected: {syns} SYN packets sent in 1s without ACKs."
+                    })
+                    break
 
     if large_exfil_rule.get("enabled"):
         max_bytes = large_exfil_rule.get("thresholds", {}).get("max_bytes", 50000000)
