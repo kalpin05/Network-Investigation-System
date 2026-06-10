@@ -1,0 +1,17 @@
+fastapi==0.111.0
+uvicorn[standard]==0.30.0
+pyshark==0.6
+scapy==2.5.0
+python-multipart==0.0.9
+asyncpg==0.29.0
+elasticsearch==8.13.0
+redis==5.0.4
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-dotenv==1.0.1
+joblib==1.4.2
+scikit-learn==1.5.0
+numpy==1.26.4
+weasyprint==62.3
+openpyxl==3.1.2
+pydantic==2.7.0
