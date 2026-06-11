@@ -1,32 +1,13 @@
-<<<<<<< HEAD
-from fastapi import APIRouter
-from db.elastic import es, PACKET_INDEX
-from db.postgres import get_pool
-=======
 from fastapi import APIRouter, Query, Depends
 from db.postgres import get_pool
 from db.elastic import es, PACKET_INDEX
 from typing import Optional
 from collections import defaultdict
 from routers.auth import check_role
->>>>>>> 9b5ac5b9c2cf63cd2e6f0449a34be50b7ca2fd62
 
 router = APIRouter()
 
 @router.get("/api/graph")
-<<<<<<< HEAD
-async def get_graph():
-    # 1. Query Elasticsearch for connections (edges)
-    query = {
-        "size": 0,
-        "aggs": {
-            "sources": {
-                "terms": {"field": "src_ip", "size": 100},
-                "aggs": {
-                    "destinations": {
-                        "terms": {"field": "dst_ip", "size": 100}
-                    }
-=======
 async def get_graph(
     session_id: Optional[str] = None,
     current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
@@ -64,61 +45,10 @@ async def get_graph(
                 "aggs": {
                     "total_bytes": {"sum": {"field": "packet_length"}},
                     "packet_count": {"value_count": {"field": "packet_length"}},
->>>>>>> 9b5ac5b9c2cf63cd2e6f0449a34be50b7ca2fd62
                 }
             }
         }
     }
-<<<<<<< HEAD
-    
-    edges = []
-    nodes_dict = {} # IP -> alert_count
-    
-    try:
-        res = es.search(index=PACKET_INDEX, body=query)
-        for src_bucket in res.get("aggregations", {}).get("sources", {}).get("buckets", []):
-            src_ip = src_bucket["key"]
-            if src_ip not in nodes_dict:
-                nodes_dict[src_ip] = 0
-                
-            for dst_bucket in src_bucket.get("destinations", {}).get("buckets", []):
-                dst_ip = dst_bucket["key"]
-                pkt_count = dst_bucket["doc_count"]
-                
-                if dst_ip not in nodes_dict:
-                    nodes_dict[dst_ip] = 0
-                    
-                edges.append({
-                    "src": src_ip,
-                    "dst": dst_ip,
-                    "packet_count": pkt_count,
-                    "suspicious": False  # Will update later
-                })
-    except Exception as e:
-        print(f"[ES] Error querying graph data: {e}")
-
-    # 2. Query Postgres for alert counts per IP
-    pool = await get_pool()
-    async with pool.acquire() as conn:
-        records = await conn.fetch("SELECT src_ip, dst_ip FROM alerts")
-        
-        for r in records:
-            sip = r["src_ip"]
-            dip = r["dst_ip"]
-            if sip in nodes_dict:
-                nodes_dict[sip] += 1
-            if dip in nodes_dict:
-                nodes_dict[dip] += 1
-                
-            # Mark edges as suspicious if an alert fired between them
-            for e in edges:
-                if e["src"] == sip and e["dst"] == dip:
-                    e["suspicious"] = True
-                
-    nodes = [{"id": ip, "ip": ip, "alert_count": count} for ip, count in nodes_dict.items()]
-    
-    return {"nodes": nodes, "edges": edges}
-=======
 
     if session_id:
         query["query"] = {"term": {"session_id": session_id}}
@@ -280,50 +210,3 @@ async def get_timeline(
     ]
 
     return {"timeline": timeline, "alert_markers": alert_markers}
-
-
-@router.get("/api/packets")
-async def search_packets(
-    src_ip: Optional[str] = None,
-    dst_ip: Optional[str] = None,
-    protocol: Optional[str] = None,
-    session_id: Optional[str] = None,
-    page: int = 1,
-    size: int = Query(default=50, le=200),
-    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
-):
-    """Search packets in Elasticsearch with filters."""
-    must = []
-    if src_ip:
-        must.append({"term": {"src_ip": src_ip}})
-    if dst_ip:
-        must.append({"term": {"dst_ip": dst_ip}})
-    if protocol:
-        must.append({"term": {"protocol": protocol.upper()}})
-    if session_id:
-        must.append({"term": {"session_id": session_id}})
-
-    query = {
-        "from": (page - 1) * size,
-        "size": size,
-        "query": {"bool": {"must": must}} if must else {"match_all": {}},
-        "sort": [{"timestamp": {"order": "desc"}}],
-    }
-
-    try:
-        result = es.search(index=PACKET_INDEX, body=query)
-        hits = result["hits"]["hits"]
-        total = result["hits"]["total"]["value"]
-        packets = [h["_source"] for h in hits]
-    except Exception as e:
-        print(f"[ES] Packet search failed: {e}")
-        packets = []
-        total = 0
-
-    return {
-        "packets": packets,
-        "total": total,
-        "page": page,
-        "pages": (total + size - 1) // size,
-    }
->>>>>>> 9b5ac5b9c2cf63cd2e6f0449a34be50b7ca2fd62

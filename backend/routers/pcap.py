@@ -178,7 +178,8 @@ async def search_packets(src_ip: str = None, dst_ip: str = None, protocol: str =
             pkt = hit["_source"]
             pkt["id"] = hit["_id"]
             packets.append(pkt)
-        return packets
+        total = res["hits"]["total"]["value"]
+        return {"packets": packets, "total": total}
     except Exception as e:
         return {"error": str(e)}
 
