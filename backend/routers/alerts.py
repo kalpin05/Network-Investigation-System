@@ -1,6 +1,7 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from db.postgres import get_pool
 from typing import Optional
+from routers.auth import check_role
 
 router = APIRouter()
 
@@ -9,7 +10,8 @@ async def list_alerts(
     severity: Optional[str] = None,
     rule_name: Optional[str] = None,
     session_id: Optional[str] = None,
-    limit: int = Query(default=100, le=500)
+    limit: int = Query(default=100, le=500),
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
 ):
     pool = await get_pool()
     query = "SELECT * FROM alerts WHERE 1=1"
@@ -35,7 +37,9 @@ async def list_alerts(
     return [dict(r) for r in rows]
 
 @router.get("/api/dashboard")
-async def dashboard_stats():
+async def dashboard_stats(
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     pool = await get_pool()
     async with pool.acquire() as conn:
         total_sessions = await conn.fetchval("SELECT COUNT(*) FROM sessions")
@@ -48,3 +52,4 @@ async def dashboard_stats():
         "alerts": total_alerts,
         "critical": critical_alerts
     }
+

@@ -1,7 +1,8 @@
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import Optional
 from db.postgres import get_pool
+from routers.auth import check_role
 import uuid
 
 router = APIRouter()
@@ -18,7 +19,10 @@ class UpdateCaseRequest(BaseModel):
     alert_ids: Optional[list[str]] = None
 
 @router.post("/api/cases")
-async def create_case(req: CreateCaseRequest):
+async def create_case(
+    req: CreateCaseRequest,
+    current_user: dict = Depends(check_role(["admin", "investigator"]))
+):
     pool = await get_pool()
     case_id = str(uuid.uuid4())
     async with pool.acquire() as conn:
@@ -36,7 +40,9 @@ async def create_case(req: CreateCaseRequest):
     return {"case_id": case_id, "title": req.title, "status": "open"}
 
 @router.get("/api/cases")
-async def list_cases():
+async def list_cases(
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("""
@@ -49,7 +55,10 @@ async def list_cases():
     return [dict(r) for r in rows]
 
 @router.get("/api/cases/{case_id}")
-async def get_case(case_id: str):
+async def get_case(
+    case_id: str,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     pool = await get_pool()
     async with pool.acquire() as conn:
         case = await conn.fetchrow("SELECT * FROM cases WHERE case_id = $1", case_id)
@@ -64,7 +73,11 @@ async def get_case(case_id: str):
     }
 
 @router.patch("/api/cases/{case_id}")
-async def update_case(case_id: str, req: UpdateCaseRequest):
+async def update_case(
+    case_id: str,
+    req: UpdateCaseRequest,
+    current_user: dict = Depends(check_role(["admin", "investigator"]))
+):
     pool = await get_pool()
     async with pool.acquire() as conn:
         if req.title:

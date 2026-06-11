@@ -1,13 +1,17 @@
-from fastapi import APIRouter, Query
+from fastapi import APIRouter, Query, Depends
 from db.postgres import get_pool
 from db.elastic import es, PACKET_INDEX
 from typing import Optional
 from collections import defaultdict
+from routers.auth import check_role
 
 router = APIRouter()
 
 @router.get("/api/graph")
-async def get_graph(session_id: Optional[str] = None):
+async def get_graph(
+    session_id: Optional[str] = None,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     """
     Returns nodes (IPs) and edges (connections) for React Flow.
     Suspicious nodes are flagged with alert_count > 0.
@@ -95,7 +99,10 @@ async def get_graph(session_id: Optional[str] = None):
 
 
 @router.get("/api/graph/node/{ip}")
-async def get_node_detail(ip: str):
+async def get_node_detail(
+    ip: str,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     """Drill-down: get all connections and alerts for a specific IP."""
     pool = await get_pool()
 
@@ -137,7 +144,11 @@ async def get_node_detail(ip: str):
 
 
 @router.get("/api/timeline")
-async def get_timeline(session_id: Optional[str] = None, interval: str = "1m"):
+async def get_timeline(
+    session_id: Optional[str] = None,
+    interval: str = "1m",
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     """
     Returns packet volume per time interval + alert timestamps for overlay.
     interval: 1m, 5m, 1h
@@ -208,7 +219,8 @@ async def search_packets(
     protocol: Optional[str] = None,
     session_id: Optional[str] = None,
     page: int = 1,
-    size: int = Query(default=50, le=200)
+    size: int = Query(default=50, le=200),
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
 ):
     """Search packets in Elasticsearch with filters."""
     must = []

@@ -8,7 +8,7 @@ const links = [
   { to: '/cases', label: 'Cases', icon: FolderOpen },
 ]
 
-export default function Navbar() {
+export default function Navbar({ user, onLogout }) {
   const { pathname } = useLocation()
   return (
     <nav className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-8">
@@ -29,6 +29,19 @@ export default function Navbar() {
           </Link>
         ))}
       </div>
+      <div className="ml-auto flex items-center gap-3">
+        <span className="text-xs text-gray-400">
+          <span className="text-blue-400 font-medium">{user?.username}</span>
+          {' '}· {user?.role}
+        </span>
+        <button
+          onClick={onLogout}
+          className="text-xs bg-gray-800 hover:bg-gray-700 text-gray-300 px-3 py-1.5 rounded-lg transition-colors cursor-pointer"
+        >
+          Logout
+        </button>
+      </div>
     </nav>
   )
 }
+

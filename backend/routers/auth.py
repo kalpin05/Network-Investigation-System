@@ -37,3 +37,14 @@ async def login(req: LoginRequest):
     # In prod: pwd_context.verify(req.password, user['password_hash'])
     token = create_token({"sub": req.username, "role": user["role"], "user_id": user["user_id"]})
     return {"access_token": token, "role": user["role"], "username": req.username}
+
+def check_role(allowed_roles: list[str]):
+    async def role_checker(current_user: dict = Depends(get_current_user)):
+        role = current_user.get("role")
+        if role not in allowed_roles:
+            raise HTTPException(
+                status_code=403, 
+                detail="You do not have permission to access this resource"
+            )
+        return current_user
+    return role_checker

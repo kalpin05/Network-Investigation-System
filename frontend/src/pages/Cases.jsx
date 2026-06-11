@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock } from 'lucide-react'
+import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText } from 'lucide-react'
 import axios from 'axios'
+
 
 const API = 'http://localhost:8000'
 
@@ -54,6 +55,24 @@ export default function Cases() {
 
   const updateNotes = async (caseId, notes) => {
     await axios.patch(`${API}/api/cases/${caseId}`, { notes }).catch(err => console.error(err))
+  }
+
+  const handleExportPDF = async (caseId) => {
+    try {
+      const response = await axios.get(`${API}/api/cases/${caseId}/export`, {
+        responseType: 'blob'
+      })
+      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `case_report_${caseId.slice(0, 8)}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+    } catch (err) {
+      console.error('PDF export failed', err)
+    }
   }
 
   return (
@@ -198,6 +217,15 @@ export default function Cases() {
                     </button>
                   ))}
                 </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button
+                  onClick={() => handleExportPDF(caseDetail.case_id)}
+                  className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                >
+                  <FileText size={16} /> Export PDF Report
+                </button>
               </div>
 
               {/* Notes */}
