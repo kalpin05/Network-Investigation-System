@@ -21,6 +21,6 @@ def detect_dns_tunnel(dns_query: str, min_length: int = 40, min_entropy: float =
         return {
             "rule_name": "DNS_TUNNEL",
             "severity": "critical",
-            "description": f"DNS query '{dns_query[:60]}...' has entropy {entropy:.2f} and length {length}. Likely encoded tunnel data."
+            "description": f"[MITRE T1071.004 - Application Layer Protocol: DNS] DNS query '{dns_query[:60]}...' has entropy {entropy:.2f} and length {length}. Likely encoded tunnel data."
         }
     return None

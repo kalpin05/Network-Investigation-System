@@ -90,7 +90,7 @@ async def upload_pcap(
             "severity": "medium",
             "src_ip": "Session",
             "dst_ip": "Session",
-            "description": f"Isolation Forest anomaly detected. Score: {anomaly_score:.2f}"
+            "description": f"[MITRE T1562 - Impair Defenses / Anomalous Behavior] Isolation Forest anomaly detected. Score: {anomaly_score:.2f}"
         })
 
     pool = await get_pool()

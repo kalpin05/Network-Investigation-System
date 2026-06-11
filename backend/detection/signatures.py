@@ -66,7 +66,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "severity": icmp_rule.get("severity", "medium"),
                     "src_ip": src_ip,
                     "dst_ip": dst_ip,
-                    "description": f"Abnormal ICMP packet length {packet_length} bytes. Possible covert channel payload."
+                    "description": f"[MITRE T1095 - Non-Application Layer Protocol] Abnormal ICMP packet length {packet_length} bytes. Possible covert channel payload."
                 })
 
         # 3. Known Malware Ports
@@ -79,7 +79,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "severity": malware_rule.get("severity", "high"),
                     "src_ip": src_ip,
                     "dst_ip": dst_ip,
-                    "description": f"Connection on known malware/C2 port {mal_port} detected."
+                    "description": f"[MITRE T1571 - Non-Standard Port] Connection on known malware/C2 port {mal_port} detected."
                 })
 
         # 4. HTTP POST to Suspicious TLD
@@ -91,7 +91,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "severity": suspicious_tld_rule.get("severity", "high"),
                     "src_ip": src_ip,
                     "dst_ip": dst_ip,
-                    "description": f"HTTP POST detected to suspicious TLD on host {http_host}."
+                    "description": f"[MITRE T1071.001 - Web Protocols] HTTP POST detected to suspicious TLD on host {http_host}."
                 })
 
         # Track for aggregate logic
@@ -135,7 +135,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                         "severity": port_scan_rule.get("severity", "high"),
                         "src_ip": src_ip,
                         "dst_ip": "Multiple",
-                        "description": f"Port scan detected: {len(ports)} unique ports targeted in 10s."
+                        "description": f"[MITRE T1046 - Network Service Discovery] Port scan detected: {len(ports)} unique ports targeted in 10s."
                     })
                     break
 
@@ -149,7 +149,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                         "severity": syn_flood_rule.get("severity", "critical"),
                         "src_ip": src_ip,
                         "dst_ip": "Multiple",
-                        "description": f"SYN flood detected: {syns} SYN packets sent in 1s without ACKs."
+                        "description": f"[MITRE T1498.001 - Direct Network Flood] SYN flood detected: {syns} SYN packets sent in 1s without ACKs."
                     })
                     break
 
@@ -162,7 +162,7 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "severity": large_exfil_rule.get("severity", "high"),
                     "src_ip": src_ip,
                     "dst_ip": "Multiple",
-                    "description": f"Large outbound transfer detected: {bytes_sent} bytes sent."
+                    "description": f"[MITRE T1041 - Exfiltration Over C2 Channel] Large outbound transfer detected: {bytes_sent} bytes sent."
                 })
 
     unique_alerts = {}

@@ -45,17 +45,17 @@ async def seed():
     print("[SEED] Inserting demo alerts...")
     alert_data = [
         (session_malicious, "DNS_TUNNEL",       "critical", "10.0.0.100", "8.8.8.8",
-         "DNS tunnelling suspected: query 'aGVsbG93b3JsZGhlbGxvd29ybGRoZWxsb3dvcmxk.evil-tunnel.com' has subdomain length 48 and entropy 4.12 bits/char."),
+         "[MITRE T1071.004 - Application Layer Protocol: DNS] DNS tunnelling suspected: query 'aGVsbG93b3JsZGhlbGxvd29ybGRoZWxsb3dvcmxk.evil-tunnel.com' has subdomain length 48 and entropy 4.12 bits/char."),
         (session_malicious, "PORT_SCAN",        "high",     "10.0.0.100", "192.168.1.1",
-         "Port scan detected: 10.0.0.100 touched 187 unique ports in session. Ports: [21, 22, 23, 25, 53, 80, 110, 143, 443, 445]..."),
+         "[MITRE T1046 - Network Service Discovery] Port scan detected: 10.0.0.100 touched 187 unique ports in session. Ports: [21, 22, 23, 25, 53, 80, 110, 143, 443, 445]..."),
         (session_malicious, "MALWARE_PORT",     "high",     "10.0.0.100", "203.0.113.10",
-         "Connection to known malware/C2 port 4444 from 10.0.0.100 → 203.0.113.10 (Metasploit default listener)."),
+         "[MITRE T1571 - Non-Standard Port] Connection to known malware/C2 port 4444 from 10.0.0.100 → 203.0.113.10 (Metasploit default listener)."),
         (session_malicious, "ICMP_COVERT_CHANNEL","medium", "10.0.0.100", "203.0.113.10",
-         "ICMP covert channel suspected: packet length 132 bytes (standard ICMP echo ≤ 28 bytes). Tools: ptunnel, ICMPShell."),
+         "[MITRE T1095 - Non-Application Layer Protocol] ICMP covert channel suspected: packet length 132 bytes (standard ICMP echo ≤ 28 bytes). Tools: ptunnel, ICMPShell."),
         (session_malicious, "AI_ANOMALY",       "medium",   "session-level", "session-level",
-         "AI anomaly detected: Isolation Forest score -0.41 (threshold -0.20). Session statistical profile deviates significantly from baseline."),
+         "[MITRE T1562 - Impair Defenses / Anomalous Behavior] AI anomaly detected: Isolation Forest score -0.41 (threshold -0.20). Session statistical profile deviates significantly from baseline."),
         (session_malicious, "DATA_EXFILTRATION","critical", "10.0.0.100", "203.0.113.10",
-         "Potential data exfiltration: 12.3MB sent to non-web ports within session window."),
+         "[MITRE T1041 - Exfiltration Over C2 Channel] Potential data exfiltration: 12.3MB sent to non-web ports within session window."),
     ]
 
     alert_ids = []
