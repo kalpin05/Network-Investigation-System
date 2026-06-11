@@ -64,7 +64,10 @@ async def init_db():
             );
 
             INSERT INTO users (username, password_hash, role)
-            VALUES ('admin', '$2b$12$placeholder', 'admin')
+            VALUES 
+                ('admin', '$2b$12$placeholder', 'admin'),
+                ('investigator', '$2b$12$placeholder', 'investigator'),
+                ('viewer', '$2b$12$placeholder', 'viewer')
             ON CONFLICT (username) DO NOTHING;
         """)
     print("[DB] PostgreSQL schema initialized")

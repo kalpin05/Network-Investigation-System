@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Upload, Wifi, Shield, AlertTriangle } from 'lucide-react'
+import { Upload, Wifi, Shield, AlertTriangle, Download } from 'lucide-react'
 import axios from 'axios'
 import PacketTable from '../components/PacketTable'
 
@@ -10,6 +10,13 @@ export default function Dashboard() {
   const [uploading, setUploading] = useState(false)
   const [stats, setStats] = useState({ sessions: 0, packets: 0, alerts: 0 })
   const [selectedSessionId, setSelectedSessionId] = useState(null)
+  const [custodyLogs, setCustodyLogs] = useState([])
+
+  const fetchCustodyLogs = () => {
+    axios.get(`${API}/api/custody`)
+      .then(r => setCustodyLogs(r.data))
+      .catch(err => console.error("[Custody] Load failed", err))
+  }
 
   useEffect(() => {
     axios.get(`${API}/api/sessions`).then(r => {
@@ -19,6 +26,7 @@ export default function Dashboard() {
       }
     })
     axios.get(`${API}/api/dashboard`).then(r => setStats(r.data)).catch(() => {})
+    fetchCustodyLogs()
   }, [])
 
   const handleUpload = async (e) => {
@@ -34,8 +42,29 @@ export default function Dashboard() {
       if (res.data.session_id) {
         setSelectedSessionId(res.data.session_id)
       }
+      fetchCustodyLogs()
+    } catch(err) {
+      console.error("[Upload] Failed", err)
     } finally {
       setUploading(false)
+    }
+  }
+
+  const downloadEvidence = async (sessionId, filename) => {
+    try {
+      const res = await axios.get(`${API}/api/evidence/${sessionId}`, {
+        responseType: 'blob'
+      })
+      const url = window.URL.createObjectURL(new Blob([res.data]))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `evidence_${filename}.zip`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      fetchCustodyLogs()
+    } catch (err) {
+      console.error("[Download] Evidence download failed", err)
     }
   }
 
@@ -65,48 +94,169 @@ export default function Dashboard() {
         ))}
       </div>
 
-      {/* Sessions table */}
-      <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
-        <div className="px-5 py-4 border-b border-gray-800 font-semibold text-gray-300">Capture Sessions</div>
-        <table className="w-full text-sm">
-          <thead className="bg-gray-800 text-gray-400">
-            <tr>
-              {['Filename', 'Packets', 'Status', 'Uploaded', 'SHA-256'].map(h => (
-                <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {sessions.map((s, i) => (
-              <tr 
-                key={s.session_id} 
-                onClick={() => setSelectedSessionId(s.session_id)}
-                className={`border-t border-gray-800 cursor-pointer transition-colors 
-                  ${selectedSessionId === s.session_id 
-                    ? 'bg-blue-600/20 hover:bg-blue-600/30' 
-                    : i % 2 === 0 ? 'hover:bg-gray-800/50' : 'bg-gray-900/50 hover:bg-gray-800/50'}`}
-              >
-                <td className="px-4 py-3 text-blue-300 font-mono text-xs">{s.filename}</td>
-                <td className="px-4 py-3 text-white">{s.packet_count?.toLocaleString()}</td>
-                <td className="px-4 py-3">
-                  <span className={`px-2 py-1 rounded text-xs font-medium
-                    ${s.status === 'complete' ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'}`}>
-                    {s.status}
-                  </span>
-                </td>
-                <td className="px-4 py-3 text-gray-400 text-xs">{new Date(s.upload_time).toLocaleString()}</td>
-                <td className="px-4 py-3 text-gray-500 font-mono text-xs">{s.sha256_hash?.slice(0, 12)}...</td>
+      {/* Sessions and Live Capture */}
+      <div className="grid grid-cols-3 gap-6">
+        {/* Sessions table */}
+        <div className="col-span-2 bg-gray-900 border border-gray-800 rounded-xl overflow-hidden h-[360px] overflow-y-auto">
+          <div className="px-5 py-4 border-b border-gray-800 font-semibold text-gray-300">Capture Sessions</div>
+          <table className="w-full text-sm text-left">
+            <thead className="bg-gray-800 text-gray-400">
+              <tr>
+                {['Filename', 'Packets', 'Status', 'Uploaded', 'SHA-256', 'Evidence'].map(h => (
+                  <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-        {sessions.length === 0 && (
-          <div className="text-center py-12 text-gray-500">No sessions yet. Upload a PCAP to begin.</div>
-        )}
+            </thead>
+            <tbody>
+              {sessions.map((s, i) => (
+                <tr 
+                  key={s.session_id} 
+                  className={`border-t border-gray-800 cursor-pointer transition-colors 
+                    ${selectedSessionId === s.session_id 
+                      ? 'bg-blue-600/20 hover:bg-blue-600/30' 
+                      : i % 2 === 0 ? 'hover:bg-gray-800/50' : 'bg-gray-900/50 hover:bg-gray-800/50'}`}
+                >
+                  <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3 text-blue-300 font-mono text-xs">{s.filename}</td>
+                  <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3 text-white">{s.packet_count?.toLocaleString()}</td>
+                  <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3">
+                    <span className={`px-2 py-1 rounded text-xs font-medium
+                      ${s.status === 'complete' ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'}`}>
+                      {s.status}
+                    </span>
+                  </td>
+                  <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3 text-gray-400 text-xs">{new Date(s.upload_time).toLocaleString()}</td>
+                  <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3 text-gray-500 font-mono text-xs">{s.sha256_hash?.slice(0, 12)}...</td>
+                  <td className="px-4 py-3">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); downloadEvidence(s.session_id, s.filename) }}
+                      className="bg-gray-800 hover:bg-gray-700 text-gray-300 p-1.5 rounded transition-colors cursor-pointer"
+                      title="Download ZIP Evidence"
+                    >
+                      <Download size={14} />
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {sessions.length === 0 && (
+            <div className="text-center py-12 text-gray-500">No sessions yet. Upload a PCAP to begin.</div>
+          )}
+        </div>
+
+        {/* Live Feed Card */}
+        <LiveFeed />
       </div>
 
       {/* Packet viewer table */}
       <PacketTable sessionId={selectedSessionId} />
+
+      {/* Chain of Custody Audit Log */}
+      <CustodyLogs logs={custodyLogs} />
+    </div>
+  )
+}
+
+// ── Live capture feed component ─────────────────────────────────────────────
+function LiveFeed() {
+  const [active, setActive] = useState(false)
+  const [packets, setPackets] = useState([])
+
+  useEffect(() => {
+    let ws = null
+    if (active) {
+      ws = new WebSocket('ws://localhost:8000/ws/capture')
+      ws.onmessage = (e) => {
+        const pkt = JSON.parse(e.data)
+        setPackets(prev => [pkt, ...prev].slice(0, 15))
+      }
+      ws.onerror = (err) => {
+        console.error("WebSocket error", err)
+      }
+      ws.onclose = () => {
+        setActive(false)
+      }
+    }
+    return () => {
+      if (ws) ws.close()
+    }
+  }, [active])
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 flex flex-col justify-between h-[360px]">
+      <div className="flex flex-col h-full">
+        <div className="flex items-center justify-between border-b border-gray-800 pb-3 mb-3">
+          <span className="font-semibold text-gray-300 flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${active ? 'bg-green-500 animate-pulse' : 'bg-gray-600'}`} />
+            Live Capture Feed
+          </span>
+          <button
+            onClick={() => setActive(!active)}
+            className={`px-3 py-1 rounded-lg text-xs font-semibold cursor-pointer transition-colors
+              ${active ? 'bg-red-600 hover:bg-red-700 text-white' : 'bg-blue-600 hover:bg-blue-700 text-white'}`}
+          >
+            {active ? 'Stop Capture' : 'Start Capture'}
+          </button>
+        </div>
+
+        <div className="flex-1 overflow-y-auto space-y-2 pr-1 font-mono text-[11px]">
+          {packets.map((p, idx) => (
+            <div key={idx} className="flex justify-between border-b border-gray-800/40 pb-1 text-gray-300">
+              <span className="text-blue-400">{p.src_ip}</span>
+              <span className="text-gray-500">➔</span>
+              <span className="text-green-400">{p.dst_ip}</span>
+              <span className="text-yellow-500 font-bold">{p.protocol}</span>
+              <span className="text-gray-400">{p.packet_length}B</span>
+            </div>
+          ))}
+          {packets.length === 0 && (
+            <div className="text-center py-20 text-gray-500 font-sans text-xs">
+              {active ? 'Sniffing local interfaces...' : 'Click Start to listen to live packet traffic.'}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Chain of custody audit log table component ──────────────────────────────
+function CustodyLogs({ logs }) {
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl overflow-hidden">
+      <div className="px-5 py-4 border-b border-gray-800 font-semibold text-gray-300">Chain of Custody Audit Log</div>
+      <table className="w-full text-sm text-left">
+        <thead className="bg-gray-800 text-gray-400">
+          <tr>
+            {['Timestamp', 'User', 'Action', 'Session ID', 'IP Address'].map(h => (
+              <th key={h} className="px-4 py-2.5 font-medium">{h}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {logs.map((l) => (
+            <tr key={l.log_id} className="border-t border-gray-800/60 hover:bg-gray-800/30">
+              <td className="px-4 py-2.5 text-gray-400">{new Date(l.accessed_at).toLocaleString()}</td>
+              <td className="px-4 py-2.5 text-blue-300 font-semibold">{l.username || 'System'}</td>
+              <td className="px-4 py-2.5">
+                <span className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize
+                  ${l.action === 'upload' ? 'bg-green-900/40 text-green-300 border border-green-700/50' : 
+                    l.action.startsWith('export') ? 'bg-purple-900/40 text-purple-300 border border-purple-700/50' : 
+                    'bg-blue-900/40 text-blue-300 border border-blue-700/50'}`}>
+                  {l.action.replace('_', ' ')}
+                </span>
+              </td>
+              <td className="px-4 py-2.5 text-gray-500 font-mono text-[11px]">{l.session_id || 'N/A'}</td>
+              <td className="px-4 py-2.5 text-gray-400 font-mono">{l.ip_address}</td>
+            </tr>
+          ))}
+          {logs.length === 0 && (
+            <tr>
+              <td colSpan={5} className="text-center py-8 text-gray-500 font-sans">No audit log entries found.</td>
+            </tr>
+          )}
+        </tbody>
+      </table>
     </div>
   )
 }

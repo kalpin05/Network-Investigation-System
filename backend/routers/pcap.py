@@ -1,11 +1,13 @@
 import os, hashlib, uuid, math, asyncio
-from fastapi import APIRouter, UploadFile, File, Depends, WebSocket, WebSocketDisconnect
+from fastapi import APIRouter, UploadFile, File, Depends, WebSocket, WebSocketDisconnect, Request
 from db.elastic import index_packets
 from db.postgres import get_pool
 from config import PCAP_STORAGE
 import pyshark
 from ml.anomaly import score_session
 from detection.signatures import run_all_signatures
+from routers.auth import get_current_user, check_role
+from utils.custody import log_custody
 
 router = APIRouter()
 
@@ -62,7 +64,11 @@ def parse_pcap(filepath: str, session_id: str) -> list[dict]:
     return packets
 
 @router.post("/api/pcap/upload")
-async def upload_pcap(file: UploadFile = File(...)):
+async def upload_pcap(
+    request: Request,
+    file: UploadFile = File(...),
+    current_user: dict = Depends(check_role(["admin", "investigator"]))
+):
     data = await file.read()
     sha256 = hashlib.sha256(data).hexdigest()
     session_id = str(uuid.uuid4())
@@ -90,8 +96,8 @@ async def upload_pcap(file: UploadFile = File(...)):
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(
-            "INSERT INTO sessions (session_id, filename, sha256_hash, packet_count, anomaly_score, status) VALUES ($1, $2, $3, $4, $5, 'complete')",
-            session_id, file.filename, sha256, len(packets), anomaly_score
+            "INSERT INTO sessions (session_id, filename, uploaded_by, sha256_hash, packet_count, anomaly_score, status) VALUES ($1, $2, $3, $4, $5, $6, 'complete')",
+            session_id, file.filename, current_user.get("user_id"), sha256, len(packets), anomaly_score
         )
         
         for a in alerts:
@@ -99,6 +105,14 @@ async def upload_pcap(file: UploadFile = File(...)):
                 "INSERT INTO alerts (session_id, rule_name, severity, src_ip, dst_ip, description) VALUES ($1, $2, $3, $4, $5, $6)",
                 session_id, a["rule_name"], a["severity"], a["src_ip"], a["dst_ip"], a["description"]
             )
+
+        # Log to Chain of Custody
+        await log_custody(
+            session_id=session_id,
+            user_id=current_user.get("user_id"),
+            action="upload",
+            ip_address=request.client.host if request.client else "127.0.0.1"
+        )
 
     return {
         "session_id": session_id,
@@ -108,14 +122,20 @@ async def upload_pcap(file: UploadFile = File(...)):
     }
 
 @router.get("/api/sessions")
-async def list_sessions():
+async def list_sessions(
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     pool = await get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch("SELECT * FROM sessions ORDER BY upload_time DESC LIMIT 50")
     return [dict(r) for r in rows]
 
 @router.get("/api/sessions/{session_id}/packets")
-async def get_session_packets(session_id: str, limit: int = 100):
+async def get_session_packets(
+    session_id: str,
+    limit: int = 100,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     from db.elastic import es, PACKET_INDEX
     try:
         res = es.search(
