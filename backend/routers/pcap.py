@@ -132,6 +132,36 @@ async def get_session_packets(session_id: str, limit: int = 100):
     except Exception as e:
         return {"error": str(e)}
 
+@router.get("/api/packets")
+async def search_packets(src_ip: str = None, dst_ip: str = None, protocol: str = None, limit: int = 100):
+    from db.elastic import es, PACKET_INDEX
+    
+    must_clauses = []
+    if src_ip:
+        must_clauses.append({"match": {"src_ip": src_ip}})
+    if dst_ip:
+        must_clauses.append({"match": {"dst_ip": dst_ip}})
+    if protocol:
+        must_clauses.append({"match": {"protocol": protocol}})
+        
+    query = {"match_all": {}} if not must_clauses else {"bool": {"must": must_clauses}}
+    
+    try:
+        res = es.search(
+            index=PACKET_INDEX,
+            query=query,
+            size=limit,
+            sort=[{"timestamp": {"order": "desc"}}]
+        )
+        packets = []
+        for hit in res["hits"]["hits"]:
+            pkt = hit["_source"]
+            pkt["id"] = hit["_id"]
+            packets.append(pkt)
+        return packets
+    except Exception as e:
+        return {"error": str(e)}
+
 @router.websocket("/ws/capture")
 async def websocket_capture(websocket: WebSocket):
     await websocket.accept()
