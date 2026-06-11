@@ -20,18 +20,36 @@ async def download_evidence(
     current_user: dict = Depends(check_role(["admin", "investigator"]))
 ):
     """
-    Downloads original PCAP + SHA-256 hash in a ZIP archive.
+    Downloads original PCAP + SHA-256 hash + custody log in a ZIP archive.
     Logs custody access.
     """
+    # Log to Chain of Custody first so it is included in the exported log
+    await log_custody(
+        session_id=session_id,
+        user_id=current_user.get("user_id"),
+        action="export",
+        ip_address=request.client.host if request.client else "127.0.0.1"
+    )
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         session = await conn.fetchrow(
-            "SELECT filename, sha256_hash FROM sessions WHERE session_id = $1",
+            "SELECT filename, sha256_hash, upload_time, packet_count FROM sessions WHERE session_id = $1",
             session_id
         )
-    
-    if not session:
-        raise HTTPException(status_code=404, detail="Session not found")
+        if not session:
+            raise HTTPException(status_code=404, detail="Session not found")
+        
+        custody_rows = await conn.fetch(
+            """
+            SELECT cl.action, cl.accessed_at, cl.ip_address, u.username
+            FROM custody_log cl
+            LEFT JOIN users u ON u.user_id = cl.user_id
+            WHERE cl.session_id = $1
+            ORDER BY cl.accessed_at ASC
+            """,
+            session_id
+        )
         
     pcap_path = os.path.join(PCAP_STORAGE, f"{session_id}.pcap")
     if not os.path.exists(pcap_path):
@@ -42,24 +60,44 @@ async def download_evidence(
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
         # Write PCAP file using its original filename
         zip_file.write(pcap_path, arcname=session["filename"])
+        
         # Write SHA-256 hash file
-        hash_content = f"Filename: {session['filename']}\nSHA-256: {session['sha256_hash']}\n"
-        zip_file.writestr("SHA256SUM.txt", hash_content)
+        hash_content = (
+            f"KanadShield Evidence Hash File\n"
+            f"================================\n"
+            f"Session ID  : {session_id}\n"
+            f"Filename    : {session['filename']}\n"
+            f"SHA-256     : {session['sha256_hash']}\n"
+            f"Upload Time : {session['upload_time']}\n"
+            f"Packet Count: {session['packet_count']}\n"
+        )
+        zip_file.writestr("sha256_verification.txt", hash_content)
+        
+        # Chain of custody log file
+        custody_lines = [
+            "KanadShield Chain of Custody Log",
+            "================================",
+            f"Session: {session_id}",
+            f"File   : {session['filename']}",
+            "",
+            f"{'Timestamp':<30} {'User':<20} {'Action':<15} {'IP Address'}",
+            "-" * 80,
+        ]
+        for row in custody_rows:
+            custody_lines.append(
+                f"{str(row['accessed_at']):<30} "
+                f"{(row['username'] or 'unknown'):<20} "
+                f"{row['action']:<15} "
+                f"{row['ip_address']}"
+            )
+        zip_file.writestr("chain_of_custody.txt", "\n".join(custody_lines))
         
     zip_buffer.seek(0)
-
-    # Log to Chain of Custody
-    await log_custody(
-        session_id=session_id,
-        user_id=current_user.get("user_id"),
-        action="export",
-        ip_address=request.client.host if request.client else "127.0.0.1"
-    )
 
     return StreamingResponse(
         zip_buffer,
         media_type="application/zip",
-        headers={"Content-Disposition": f"attachment; filename=evidence_{session_id}.zip"}
+        headers={"Content-Disposition": f"attachment; filename=evidence_{session_id[:8]}.zip"}
     )
 
 
@@ -87,9 +125,21 @@ async def export_case_report(
         # Get unique session IDs from alerts to list evidence
         session_ids = list(set([str(a["session_id"]) for a in alerts if a["session_id"]]))
         sessions = []
+        custody_rows = []
         if session_ids:
             sessions = await conn.fetch(
                 "SELECT session_id, filename, sha256_hash, upload_time, packet_count FROM sessions WHERE session_id = ANY($1)",
+                session_ids
+            )
+            # Fetch custody logs for these sessions
+            custody_rows = await conn.fetch(
+                """
+                SELECT cl.session_id, cl.action, cl.accessed_at, cl.ip_address, u.username
+                FROM custody_log cl
+                LEFT JOIN users u ON u.user_id = cl.user_id
+                WHERE cl.session_id = ANY($1)
+                ORDER BY cl.accessed_at ASC
+                """,
                 session_ids
             )
 
@@ -117,6 +167,20 @@ async def export_case_report(
         """
     if not sessions:
         evidence_html = "<tr><td colspan='5' style='text-align: center;'>No evidence files linked.</td></tr>"
+
+    custody_html = ""
+    for c in custody_rows:
+        custody_html += f"""
+        <tr>
+            <td>{c['accessed_at'].strftime('%Y-%m-%d %H:%M:%S') if c['accessed_at'] else '-'}</td>
+            <td>{c['username'] or 'System'}</td>
+            <td style="text-transform: uppercase; font-weight: bold;">{c['action'].replace('_', ' ')}</td>
+            <td style="font-family: monospace; font-size: 11px;">{c['session_id']}</td>
+            <td style="font-family: monospace;">{c['ip_address']}</td>
+        </tr>
+        """
+    if not custody_rows:
+        custody_html = "<tr><td colspan='5' style='text-align: center;'>No custody logs found.</td></tr>"
 
     alerts_html = ""
     for a in alerts:
@@ -203,7 +267,7 @@ async def export_case_report(
                 width: 100%;
                 border-collapse: collapse;
                 margin-top: 15px;
-                font-size: 12px;
+                font-size: 11px;
             }}
             th, td {{
                 border: 1px solid #e5e7eb;
@@ -260,7 +324,7 @@ async def export_case_report(
         <h2>Investigator Notes</h2>
         <div class="notes">{case['notes'] or 'No investigator notes added.'}</div>
         
-        <h2>Chain of Custody / Evidence Files</h2>
+        <h2>Evidence Files</h2>
         <table>
             <thead>
                 <tr>
@@ -273,6 +337,22 @@ async def export_case_report(
             </thead>
             <tbody>
                 {evidence_html}
+            </tbody>
+        </table>
+
+        <h2>Chain of Custody Logs</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>Timestamp</th>
+                    <th>User</th>
+                    <th>Action</th>
+                    <th>Session ID</th>
+                    <th>IP Address</th>
+                </tr>
+            </thead>
+            <tbody>
+                {custody_html}
             </tbody>
         </table>
         
@@ -301,7 +381,7 @@ async def export_case_report(
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": f"attachment; filename=case_report_{case_id}.pdf"}
+        headers={"Content-Disposition": f"attachment; filename=case_report_{case_id[:8]}.pdf"}
     )
 
 
