@@ -153,7 +153,13 @@ async def get_session_packets(
         return {"error": str(e)}
 
 @router.get("/api/packets")
-async def search_packets(src_ip: str = None, dst_ip: str = None, protocol: str = None, limit: int = 100):
+async def search_packets(
+    src_ip: str = None,
+    dst_ip: str = None,
+    protocol: str = None,
+    limit: int = 100,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
     from db.elastic import es, PACKET_INDEX
     
     must_clauses = []
