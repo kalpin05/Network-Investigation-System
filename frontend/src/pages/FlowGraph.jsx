@@ -135,6 +135,32 @@ export default function FlowGraph() {
                 </p>
               </div>
 
+              {nodeDetail?.osint && (
+                <div className="bg-gray-800/50 rounded-lg p-3 border border-gray-700">
+                  <h4 className="text-gray-300 font-semibold text-xs mb-2 uppercase tracking-wider">OSINT Reputation</h4>
+                  
+                  <div className="flex items-center gap-3 mb-2">
+                    <div className="flex-1 h-2 bg-gray-900 rounded-full overflow-hidden">
+                      <div 
+                        className={`h-full ${nodeDetail.osint.score > 80 ? 'bg-red-500' : nodeDetail.osint.score > 0 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                        style={{ width: `${Math.max(nodeDetail.osint.score, 5)}%` }}
+                      />
+                    </div>
+                    <span className={`text-xs font-bold ${nodeDetail.osint.score > 80 ? 'text-red-400' : nodeDetail.osint.score > 0 ? 'text-yellow-400' : 'text-green-400'}`}>
+                      {nodeDetail.osint.score}% Malicious
+                    </span>
+                  </div>
+                  
+                  <div className="flex flex-wrap gap-1.5 mt-2">
+                    {nodeDetail.osint.tags.map(tag => (
+                      <span key={tag} className="px-2 py-0.5 rounded text-[10px] font-mono font-bold bg-gray-700 text-gray-300 border border-gray-600">
+                        {tag}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {nodeDetail?.alerts?.length > 0 && (
                 <div>
                   <h4 className="text-red-400 font-semibold text-sm mb-2">Alerts</h4>

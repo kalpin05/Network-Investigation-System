@@ -136,8 +136,37 @@ async def get_node_detail(
     except Exception:
         peers = []
 
+    # Simulate OSINT Data
+    osint_data = {
+        "score": 0,
+        "tags": []
+    }
+    
+    # Simple deterministic logic for demo purposes
+    if ip.startswith(("10.", "192.168.", "172.")):
+        osint_data["tags"] = ["Internal Network"]
+    elif ip == "203.0.113.10":
+        osint_data["score"] = 100
+        osint_data["tags"] = ["C2 Server", "Malware", "Botnet"]
+    elif ip == "8.8.8.8":
+        osint_data["score"] = 0
+        osint_data["tags"] = ["Public DNS", "Google"]
+    else:
+        # Generate a random-looking score based on hash of IP
+        hash_val = sum(ord(c) for c in ip)
+        if hash_val % 5 == 0:
+            osint_data["score"] = 85
+            osint_data["tags"] = ["Spam", "VPN"]
+        elif hash_val % 3 == 0:
+            osint_data["score"] = 40
+            osint_data["tags"] = ["Data Center", "Suspicious"]
+        else:
+            osint_data["score"] = 0
+            osint_data["tags"] = ["Clean"]
+
     return {
         "ip": ip,
+        "osint": osint_data,
         "alerts": [dict(a) for a in alerts],
         "top_connections": [{"ip": b["key"], "bytes": int(b["bytes"]["value"])} for b in peers],
     }
