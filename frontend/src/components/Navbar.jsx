@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Shield, Activity, AlertTriangle, FolderOpen, Network } from 'lucide-react'
+import { Shield, Activity, AlertTriangle, FolderOpen, Network, Brain } from 'lucide-react'
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: Activity },
   { to: '/graph', label: 'Flow Graph', icon: Network },
   { to: '/alerts', label: 'Alerts', icon: AlertTriangle },
   { to: '/cases', label: 'Cases', icon: FolderOpen },
+  { to: '/ml', label: 'AI Settings', icon: Brain },
 ]
 
 export default function Navbar({ user, onLogout }) {

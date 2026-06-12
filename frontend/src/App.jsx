@@ -5,6 +5,7 @@ import Dashboard from './pages/Dashboard'
 import FlowGraph from './pages/FlowGraph'
 import Alerts from './pages/Alerts'
 import Cases from './pages/Cases'
+import MLTraining from './pages/MLTraining'
 import Login from './pages/Login'
 
 export default function App() {
@@ -33,6 +34,7 @@ export default function App() {
             <Route path="/graph" element={<FlowGraph />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/cases" element={<Cases />} />
+            <Route path="/ml" element={<MLTraining />} />
           </Routes>
         </main>
       </div>
