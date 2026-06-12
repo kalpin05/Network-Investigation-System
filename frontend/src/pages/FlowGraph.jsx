@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { MapPin } from 'lucide-react'
 import ReactFlow, {
   Background, Controls, MiniMap,
   useNodesState, useEdgesState
@@ -129,7 +130,15 @@ export default function FlowGraph() {
           ) : (
             <div className="space-y-4">
               <div>
-                <h3 className="text-blue-400 font-mono font-bold text-lg">{selected}</h3>
+                <div className="flex items-center gap-3">
+                  <h3 className="text-blue-400 font-mono font-bold text-lg">{selected}</h3>
+                  {nodeDetail?.geo && (
+                    <div className="flex items-center gap-1 text-gray-300 text-xs bg-gray-800 w-fit px-2 py-0.5 rounded border border-gray-700">
+                      <MapPin size={12} className="text-blue-400" />
+                      <span className="font-semibold">{nodeDetail.geo.country} ({nodeDetail.geo.code})</span>
+                    </div>
+                  )}
+                </div>
                 <p className="text-gray-400 text-xs mt-1">
                   {nodeDetail?.alerts?.length || 0} alerts · {nodeDetail?.top_connections?.length || 0} connections
                 </p>

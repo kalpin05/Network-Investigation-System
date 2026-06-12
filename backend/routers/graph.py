@@ -136,24 +136,42 @@ async def get_node_detail(
     except Exception:
         peers = []
 
-    # Simulate OSINT Data
+    # Simulate OSINT & Geo-IP Data
     osint_data = {
         "score": 0,
         "tags": []
+    }
+    geo_data = {
+        "country": "Unknown",
+        "code": "UN"
     }
     
     # Simple deterministic logic for demo purposes
     if ip.startswith(("10.", "192.168.", "172.")):
         osint_data["tags"] = ["Internal Network"]
+        geo_data = {"country": "Local Network", "code": "LAN"}
     elif ip == "203.0.113.10":
         osint_data["score"] = 100
         osint_data["tags"] = ["C2 Server", "Malware", "Botnet"]
+        geo_data = {"country": "Russian Federation", "code": "RU"}
     elif ip == "8.8.8.8":
         osint_data["score"] = 0
         osint_data["tags"] = ["Public DNS", "Google"]
+        geo_data = {"country": "United States", "code": "US"}
     else:
         # Generate a random-looking score based on hash of IP
         hash_val = sum(ord(c) for c in ip)
+        
+        # Pick a deterministic country
+        countries = [
+            {"country": "China", "code": "CN"},
+            {"country": "Germany", "code": "DE"},
+            {"country": "Brazil", "code": "BR"},
+            {"country": "North Korea", "code": "KP"},
+            {"country": "Iran", "code": "IR"}
+        ]
+        geo_data = countries[hash_val % len(countries)]
+        
         if hash_val % 5 == 0:
             osint_data["score"] = 85
             osint_data["tags"] = ["Spam", "VPN"]
@@ -167,6 +185,7 @@ async def get_node_detail(
     return {
         "ip": ip,
         "osint": osint_data,
+        "geo": geo_data,
         "alerts": [dict(a) for a in alerts],
         "top_connections": [{"ip": b["key"], "bytes": int(b["bytes"]["value"])} for b in peers],
     }
