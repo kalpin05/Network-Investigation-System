@@ -193,10 +193,25 @@ async def search_packets(
 async def websocket_capture(websocket: WebSocket):
     await websocket.accept()
     from scapy.all import AsyncSniffer, IP, TCP, UDP
-    import time
+    import time, json
+    from aiokafka import AIOKafkaProducer, AIOKafkaConsumer
+    from config import KAFKA_BOOTSTRAP_SERVERS
     
     loop = asyncio.get_running_loop()
-    queue = asyncio.Queue()
+
+    producer = AIOKafkaProducer(
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_serializer=lambda v: json.dumps(v).encode('utf-8')
+    )
+    await producer.start()
+
+    consumer = AIOKafkaConsumer(
+        "live-packets",
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+        auto_offset_reset="latest"
+    )
+    await consumer.start()
 
     def packet_callback(pkt):
         if IP in pkt:
@@ -207,14 +222,18 @@ async def websocket_capture(websocket: WebSocket):
                 "packet_length": len(pkt),
                 "timestamp": time.time()
             }
-            loop.call_soon_threadsafe(queue.put_nowait, packet_data)
+            # Schedule the async send on the main loop
+            asyncio.run_coroutine_threadsafe(producer.send_and_wait("live-packets", packet_data), loop)
 
     sniffer = AsyncSniffer(prn=packet_callback, store=False)
     sniffer.start()
 
     try:
-        while True:
-            packet_data = await queue.get()
-            await websocket.send_json(packet_data)
+        async for msg in consumer:
+            await websocket.send_json(msg.value)
     except WebSocketDisconnect:
+        pass
+    finally:
         sniffer.stop()
+        await producer.stop()
+        await consumer.stop()

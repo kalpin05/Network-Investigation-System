@@ -8,11 +8,11 @@ services:
     depends_on:
       - postgres
       - elasticsearch
-      - redis
+      - kafka
     environment:
       - DATABASE_URL=postgresql://kanadshield:password@postgres/kanadshield
       - ES_URL=http://elasticsearch:9200
-      - REDIS_URL=redis://redis:6379
+      - KAFKA_BOOTSTRAP_SERVERS=kafka:9092
       - SECRET_KEY=kanadshield-secret-key-change-in-prod
     volumes:
       - ./pcap_storage:/app/pcap_storage
@@ -50,10 +50,22 @@ services:
     ports:
       - "9200:9200"
 
-  redis:
-    image: redis:7-alpine
+  kafka:
+    image: apache/kafka:latest
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: broker,controller
+      KAFKA_LISTENERS: PLAINTEXT://0.0.0.0:9092,CONTROLLER://0.0.0.0:9093
+      KAFKA_ADVERTISED_LISTENERS: PLAINTEXT://kafka:9092
+      KAFKA_CONTROLLER_LISTENER_NAMES: CONTROLLER
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT
+      KAFKA_CONTROLLER_QUORUM_VOTERS: 1@kafka:9093
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_GROUP_INITIAL_REBALANCE_DELAY_MS: 0
     ports:
-      - "6379:6379"
+      - "9092:9092"
 
 volumes:
   pgdata:
