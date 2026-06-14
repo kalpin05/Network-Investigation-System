@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Shield, Activity, AlertTriangle, FolderOpen, Network, Brain } from 'lucide-react'
+import { Shield, Activity, AlertTriangle, FolderOpen, Network, Brain, Settings } from 'lucide-react'
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: Activity },
@@ -8,6 +8,7 @@ const links = [
   { to: '/cases', label: 'Cases', icon: FolderOpen },
   { to: '/kibana', label: 'Analytics (Kibana)', icon: Activity },
   { to: '/ml', label: 'AI Settings', icon: Brain },
+  { to: '/settings', label: 'System Settings', icon: Settings },
 ]
 
 export default function Navbar({ user, onLogout }) {

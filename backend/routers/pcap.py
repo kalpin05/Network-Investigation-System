@@ -105,6 +105,14 @@ async def upload_pcap(
             "description": f"[MITRE T1562 - Impair Defenses / Anomalous Behavior] Isolation Forest anomaly detected. Score: {anomaly_score:.2f}"
         })
 
+    # Forward to SIEM and Kibana
+    if alerts:
+        from db.elastic import index_alerts
+        from utils.siem import forward_to_siem
+        index_alerts(alerts, session_id)
+        # We can fire and forget the SIEM webhook
+        asyncio.create_task(forward_to_siem(alerts, session_id))
+
     pool = await get_pool()
     async with pool.acquire() as conn:
         await conn.execute(

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from routers import pcap, alerts, cases, graph, auth, forensics, ml, threat_intel
+from routers import pcap, alerts, cases, graph, auth, forensics, ml, threat_intel, settings
 from db.postgres import init_db
 
 app = FastAPI(title="KanadShield API", version="1.0.0")
@@ -29,3 +29,4 @@ app.include_router(graph.router, tags=["graph"])
 app.include_router(forensics.router, tags=["forensics"])
 app.include_router(ml.router, tags=["ml"])
 app.include_router(threat_intel.router, tags=["threat_intel"])
+app.include_router(settings.router, tags=["settings"])

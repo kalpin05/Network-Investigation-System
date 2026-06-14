@@ -63,6 +63,14 @@ async def init_db():
                 ip_address TEXT
             );
 
+            CREATE TABLE IF NOT EXISTS siem_config (
+                id SERIAL PRIMARY KEY,
+                is_enabled BOOLEAN DEFAULT FALSE,
+                destination_url TEXT,
+                destination_type TEXT,
+                updated_at TIMESTAMPTZ DEFAULT NOW()
+            );
+
             INSERT INTO users (username, password_hash, role)
             VALUES 
                 ('admin', '$2b$12$placeholder', 'admin'),
