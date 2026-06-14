@@ -6,6 +6,7 @@ const links = [
   { to: '/graph', label: 'Flow Graph', icon: Network },
   { to: '/alerts', label: 'Alerts', icon: AlertTriangle },
   { to: '/cases', label: 'Cases', icon: FolderOpen },
+  { to: '/kibana', label: 'Analytics (Kibana)', icon: Activity },
   { to: '/ml', label: 'AI Settings', icon: Brain },
 ]
 

@@ -6,6 +6,7 @@ import FlowGraph from './pages/FlowGraph'
 import Alerts from './pages/Alerts'
 import Cases from './pages/Cases'
 import MLTraining from './pages/MLTraining'
+import Kibana from './pages/Kibana'
 import Login from './pages/Login'
 import axios from 'axios'
 
@@ -48,6 +49,7 @@ export default function App() {
             <Route path="/graph" element={<FlowGraph />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/cases" element={<Cases />} />
+            <Route path="/kibana" element={<Kibana />} />
             <Route path="/ml" element={<MLTraining />} />
           </Routes>
         </main>
