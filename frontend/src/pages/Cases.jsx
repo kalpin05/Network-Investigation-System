@@ -228,7 +228,14 @@ export default function Cases() {
                 >
                   <option value="en">English</option>
                   <option value="hi">Hindi</option>
+                  <option value="gu">Gujarati</option>
                   <option value="es">Español</option>
+                  <option value="fr">Français</option>
+                  <option value="de">Deutsch</option>
+                  <option value="zh">中文 (Chinese)</option>
+                  <option value="ja">日本語 (Japanese)</option>
+                  <option value="ru">Русский (Russian)</option>
+                  <option value="ar">العربية (Arabic)</option>
                 </select>
                 <button
                   onClick={() => handleExportPDF(caseDetail.case_id)}
