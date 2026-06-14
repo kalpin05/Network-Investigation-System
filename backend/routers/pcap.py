@@ -152,6 +152,67 @@ async def get_session_packets(
     except Exception as e:
         return {"error": str(e)}
 
+@router.get("/api/sessions/{session_id}/stream")
+async def get_tcp_stream(
+    session_id: str,
+    src_ip: str,
+    src_port: int,
+    dst_ip: str,
+    dst_port: int,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
+    filepath = os.path.join(PCAP_STORAGE, f"{session_id}.pcap")
+    if not os.path.exists(filepath):
+        return {"error": "PCAP file not found"}
+
+    try:
+        # tshark -r file.pcap -q -z follow,tcp,ascii,src:sport,dst:dport
+        cmd = [
+            "tshark", "-r", filepath, "-q",
+            "-z", f"follow,tcp,ascii,{src_ip}:{src_port},{dst_ip}:{dst_port}"
+        ]
+        
+        process = await asyncio.create_subprocess_exec(
+            *cmd,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        output = stdout.decode('utf-8', errors='replace')
+        
+        # Parse out just the payload text, removing tshark banners
+        # Example output:
+        # ===================================================================
+        # Follow: tcp,ascii
+        # Filter: ...
+        # Node 0: ...
+        # Node 1: ...
+        # <PAYLOAD>
+        # ===================================================================
+        
+        lines = output.split('\n')
+        payload_lines = []
+        in_payload = False
+        
+        for line in lines:
+            if line.startswith("Node 1:"):
+                in_payload = True
+                continue
+            if in_payload:
+                if line.startswith("==================================================================="):
+                    break
+                payload_lines.append(line)
+                
+        # If payload is empty but output is not, return the whole output as fallback
+        if not payload_lines and output.strip():
+            return {"stream": output.strip()}
+            
+        return {"stream": "\n".join(payload_lines).strip()}
+        
+    except Exception as e:
+        return {"error": f"Failed to reconstruct stream: {str(e)}"}
+
 @router.get("/api/packets")
 async def search_packets(
     src_ip: str = None,

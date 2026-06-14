@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { Activity, ShieldAlert, Cpu } from 'lucide-react'
 import axios from 'axios'
+import StreamModal from './StreamModal'
 
 const API = 'http://localhost:8000'
 
@@ -8,6 +9,9 @@ export default function PacketTable({ sessionId }) {
   const [packets, setPackets] = useState([])
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState(null)
+  
+  const [streamModalOpen, setStreamModalOpen] = useState(false)
+  const [selectedPacket, setSelectedPacket] = useState(null)
 
   useEffect(() => {
     if (!sessionId) return
@@ -81,6 +85,7 @@ export default function PacketTable({ sessionId }) {
                 <th className="px-4 py-3">Destination IP : Port</th>
                 <th className="px-4 py-3 text-right">Length (B)</th>
                 <th className="px-4 py-3">Info</th>
+                <th className="px-4 py-3">Action</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-850">
@@ -107,11 +112,32 @@ export default function PacketTable({ sessionId }) {
                     {p.flags && !p.dns_query && !p.http_host && <span className="text-purple-400/80">Flags: {p.flags}</span>}
                     {!p.dns_query && !p.http_host && !p.flags && <span className="text-gray-600">-</span>}
                   </td>
+                  <td className="px-4 py-3 text-center">
+                    {(p.protocol === 'TCP' || p.flags || ['HTTP', 'TLS', 'SSL', 'SSH', 'FTP', 'SMTP'].includes(p.protocol)) && p.src_port > 0 && p.dst_port > 0 && (
+                      <button 
+                        onClick={() => {
+                          setSelectedPacket(p);
+                          setStreamModalOpen(true);
+                        }}
+                        className="bg-blue-600 hover:bg-blue-500 text-white text-[10px] px-2 py-1 rounded font-bold uppercase transition-colors"
+                      >
+                        Follow
+                      </button>
+                    )}
+                  </td>
                 </tr>
               ))}
             </tbody>
           </table>
         </div>
+      )}
+
+      {streamModalOpen && selectedPacket && (
+        <StreamModal 
+          packet={selectedPacket} 
+          sessionId={selectedPacket.session_id || sessionId} 
+          onClose={() => setStreamModalOpen(false)} 
+        />
       )}
     </div>
   )

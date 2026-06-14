@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText } from 'lucide-react'
+import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink } from 'lucide-react'
 import axios from 'axios'
+import StreamModal from '../components/StreamModal'
 
 
 const API = 'http://localhost:8000'
@@ -333,20 +334,27 @@ function NotesEditor({ initial, onSave }) {
 
 // ── Packet search component ──────────────────────────────────────────────────
 function PacketSearch() {
-  const [filters, setFilters] = useState({ src_ip: '', dst_ip: '', protocol: '' })
+  const [params, setParams] = useState({ src_ip: '', dst_ip: '', protocol: '', limit: 100 })
   const [results, setResults] = useState({ packets: [], total: 0 })
-  const [searching, setSearching] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [streamModalOpen, setStreamModalOpen] = useState(false)
+  const [selectedPacket, setSelectedPacket] = useState(null)
 
   const search = async () => {
-    setSearching(true)
-    const params = Object.fromEntries(Object.entries(filters).filter(([, v]) => v))
-    axios.get(`${API}/api/packets`, { params }).then(r => {
+    setLoading(true)
+    const filteredParams = Object.fromEntries(Object.entries(params).filter(([, v]) => v))
+    axios.get(`${API}/api/packets`, { params: filteredParams }).then(r => {
       setResults(r.data)
     }).catch(err => {
       console.error(err)
     }).finally(() => {
-      setSearching(false)
+      setLoading(false)
     })
+  }
+
+  const openStream = (p) => {
+    setSelectedPacket(p)
+    setStreamModalOpen(true)
   }
 
   return (
@@ -360,8 +368,8 @@ function PacketSearch() {
         ].map(({ key, placeholder }) => (
           <input
             key={key}
-            value={filters[key]}
-            onChange={e => setFilters(p => ({ ...p, [key]: e.target.value }))}
+            value={params[key]}
+            onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
             placeholder={placeholder}
             className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
               focus:outline-none focus:border-blue-500"
@@ -372,44 +380,57 @@ function PacketSearch() {
           onClick={search}
           className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
         >
-          {searching ? 'Searching...' : 'Search'}
+          {loading ? 'Searching...' : 'Search'}
         </button>
       </div>
 
       {results.total > 0 && (
-        <div>
-          <p className="text-gray-400 text-xs mb-3">{results.total.toLocaleString()} packets found</p>
-          <div className="overflow-x-auto">
-            <table className="w-full text-xs">
-              <thead className="text-gray-400 bg-gray-800">
-                <tr>
-                  {['Timestamp', 'Src IP', 'Dst IP', 'Protocol', 'Src Port', 'Dst Port', 'Length'].map(h => (
-                    <th key={h} className="px-3 py-2 text-left">{h}</th>
-                  ))}
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead className="text-gray-400 bg-gray-800">
+              <tr>
+                <th className="px-3 py-2 text-left">Timestamp</th>
+                <th className="px-3 py-2 text-left">Src IP</th>
+                <th className="px-3 py-2 text-left">Dst IP</th>
+                <th className="px-3 py-2 text-left">Protocol</th>
+                <th className="px-3 py-2 text-left">Length (B)</th>
+                <th className="px-3 py-2 text-center">Action</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-800">
+              {results.packets.map((p, i) => (
+                <tr key={i} className="hover:bg-gray-800/50">
+                  <td className="px-3 py-2 text-gray-400 font-mono">
+                    {p.timestamp ? new Date(p.timestamp).toLocaleTimeString() : '-'}
+                  </td>
+                  <td className="px-3 py-2 text-blue-300 font-mono">{p.src_ip}</td>
+                  <td className="px-3 py-2 text-green-300 font-mono">{p.dst_ip}</td>
+                  <td className="px-3 py-2 text-yellow-300">{p.protocol}</td>
+                  <td className="px-3 py-2 text-gray-400">{p.packet_length}</td>
+                  <td className="px-3 py-2 text-center">
+                    {(p.protocol === 'TCP' || p.flags || ['HTTP', 'TLS', 'SSL', 'SSH', 'FTP', 'SMTP'].includes(p.protocol)) && p.src_port > 0 && p.dst_port > 0 && (
+                      <button onClick={() => openStream(p)} className="text-blue-400 hover:text-blue-300">
+                        <ExternalLink size={14} />
+                    </button>
+                    )}
+                  </td>
                 </tr>
-              </thead>
-              <tbody>
-                {results.packets.map((p, i) => (
-                  <tr key={i} className={`border-t border-gray-800 ${i % 2 ? 'bg-gray-900/50' : ''}`}>
-                    <td className="px-3 py-2 text-gray-400 font-mono">
-                      {p.timestamp ? new Date(p.timestamp).toLocaleTimeString() : '-'}
-                    </td>
-                    <td className="px-3 py-2 text-blue-300 font-mono">{p.src_ip}</td>
-                    <td className="px-3 py-2 text-green-300 font-mono">{p.dst_ip}</td>
-                    <td className="px-3 py-2 text-yellow-300">{p.protocol}</td>
-                    <td className="px-3 py-2 text-gray-400">{p.src_port}</td>
-                    <td className="px-3 py-2 text-gray-400">{p.dst_port}</td>
-                    <td className="px-3 py-2 text-gray-400">{p.packet_length}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+              ))}
+            </tbody>
+          </table>
         </div>
       )}
 
       {results.total === 0 && results.packets.length === 0 && (
         <p className="text-gray-500 text-sm text-center py-6">Enter filters and search to find packets.</p>
+      )}
+
+      {streamModalOpen && selectedPacket && (
+        <StreamModal 
+          packet={selectedPacket} 
+          sessionId={selectedPacket.session_id} 
+          onClose={() => setStreamModalOpen(false)} 
+        />
       )}
     </div>
   )
