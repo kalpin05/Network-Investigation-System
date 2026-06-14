@@ -1,7 +1,7 @@
 import io
 import os
 import zipfile
-from typing import Optional
+from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Request
 from fastapi.responses import Response, StreamingResponse
 from db.postgres import get_pool
@@ -10,6 +10,105 @@ from utils.custody import log_custody
 from routers.auth import get_current_user, check_role
 from weasyprint import HTML
 from datetime import datetime
+
+TRANSLATIONS = {
+    "en": {
+        "title_prefix": "KanadShield Case Report - ",
+        "logo_text": "KanadShield Forensic Investigation",
+        "subtitle": "Official Evidence & Incident Report • Generated",
+        "case": "Case:",
+        "case_id": "Case ID:",
+        "status": "Status:",
+        "created_at": "Created At:",
+        "investigator_notes": "Investigator Notes",
+        "no_notes": "No investigator notes added.",
+        "evidence_files": "Evidence Files",
+        "session_id": "Session ID",
+        "filename": "Filename",
+        "hash": "SHA-256 Cryptographic Hash",
+        "packets": "Packets",
+        "ingestion_date": "Ingestion Date",
+        "no_evidence": "No evidence files linked.",
+        "chain_of_custody": "Chain of Custody Logs",
+        "timestamp": "Timestamp",
+        "user": "User",
+        "action": "Action",
+        "ip_address": "IP Address",
+        "no_custody": "No custody logs found.",
+        "linked_alerts": "Linked Alerts",
+        "fired_at": "Fired At",
+        "rule_name": "Rule Name",
+        "severity": "Severity",
+        "source_ip": "Source IP",
+        "dest_ip": "Destination IP",
+        "description": "Description",
+        "no_alerts": "No alerts linked."
+    },
+    "hi": {
+        "title_prefix": "KanadShield केस रिपोर्ट - ",
+        "logo_text": "KanadShield फोरेंसिक जांच",
+        "subtitle": "आधिकारिक साक्ष्य और घटना रिपोर्ट • उत्पन्न",
+        "case": "केस:",
+        "case_id": "केस आईडी:",
+        "status": "स्थिति:",
+        "created_at": "बनाया गया:",
+        "investigator_notes": "जांचकर्ता के नोट्स",
+        "no_notes": "कोई जांचकर्ता नोट्स नहीं जोड़े गए।",
+        "evidence_files": "साक्ष्य फाइलें",
+        "session_id": "सत्र आईडी",
+        "filename": "फ़ाइल का नाम",
+        "hash": "SHA-256 क्रिप्टोग्राफ़िक हैश",
+        "packets": "पैकेट",
+        "ingestion_date": "अंतर्ग्रहण तिथि",
+        "no_evidence": "कोई साक्ष्य फ़ाइलें लिंक नहीं की गई हैं।",
+        "chain_of_custody": "कस्टडी लॉग की श्रृंखला",
+        "timestamp": "टाइमस्टैम्प",
+        "user": "उपयोगकर्ता",
+        "action": "कार्रवाई",
+        "ip_address": "आईपी ​​पता",
+        "no_custody": "कोई कस्टडी लॉग नहीं मिला।",
+        "linked_alerts": "लिंक किए गए अलर्ट",
+        "fired_at": "फायर किया गया",
+        "rule_name": "नियम का नाम",
+        "severity": "गंभीरता",
+        "source_ip": "स्रोत आईपी",
+        "dest_ip": "गंतव्य आईपी",
+        "description": "विवरण",
+        "no_alerts": "कोई अलर्ट लिंक नहीं है।"
+    },
+    "es": {
+        "title_prefix": "Informe del Caso KanadShield - ",
+        "logo_text": "Investigación Forense KanadShield",
+        "subtitle": "Informe Oficial de Evidencia e Incidentes • Generado",
+        "case": "Caso:",
+        "case_id": "ID del Caso:",
+        "status": "Estado:",
+        "created_at": "Creado en:",
+        "investigator_notes": "Notas del Investigador",
+        "no_notes": "No se añadieron notas del investigador.",
+        "evidence_files": "Archivos de Evidencia",
+        "session_id": "ID de Sesión",
+        "filename": "Nombre del Archivo",
+        "hash": "Hash Criptográfico SHA-256",
+        "packets": "Paquetes",
+        "ingestion_date": "Fecha de Ingestión",
+        "no_evidence": "No hay archivos de evidencia enlazados.",
+        "chain_of_custody": "Registros de Cadena de Custodia",
+        "timestamp": "Marca de Tiempo",
+        "user": "Usuario",
+        "action": "Acción",
+        "ip_address": "Dirección IP",
+        "no_custody": "No se encontraron registros de custodia.",
+        "linked_alerts": "Alertas Enlazadas",
+        "fired_at": "Disparado En",
+        "rule_name": "Nombre de la Regla",
+        "severity": "Severidad",
+        "source_ip": "IP de Origen",
+        "dest_ip": "IP de Destino",
+        "description": "Descripción",
+        "no_alerts": "No hay alertas enlazadas."
+    }
+}
 
 router = APIRouter()
 
@@ -104,11 +203,12 @@ async def download_evidence(
 @router.get("/api/cases/{case_id}/export")
 async def export_case_report(
     case_id: str,
-    request: Request,
-    current_user: dict = Depends(check_role(["admin", "investigator"]))
+    lang: str = "en",
+    current_user: dict = Depends(check_role(["admin", "investigator"])),
+    request: Request = None
 ):
     """
-    Generates a PDF case report using WeasyPrint.
+    Generates a PDF case report using WeasyPrint with multi-language support.
     Logs custody access for all evidence sessions.
     """
     pool = await get_pool()
@@ -153,6 +253,8 @@ async def export_case_report(
             ip_address=client_ip
         )
 
+    t = TRANSLATIONS.get(lang, TRANSLATIONS["en"])
+
     # Format HTML
     evidence_html = ""
     for s in sessions:
@@ -166,7 +268,7 @@ async def export_case_report(
         </tr>
         """
     if not sessions:
-        evidence_html = "<tr><td colspan='5' style='text-align: center;'>No evidence files linked.</td></tr>"
+        evidence_html = f"<tr><td colspan='5' style='text-align: center;'>{t['no_evidence']}</td></tr>"
 
     custody_html = ""
     for c in custody_rows:
@@ -180,7 +282,7 @@ async def export_case_report(
         </tr>
         """
     if not custody_rows:
-        custody_html = "<tr><td colspan='5' style='text-align: center;'>No custody logs found.</td></tr>"
+        custody_html = f"<tr><td colspan='5' style='text-align: center;'>{t['no_custody']}</td></tr>"
 
     alerts_html = ""
     for a in alerts:
@@ -196,13 +298,13 @@ async def export_case_report(
         </tr>
         """
     if not alerts:
-        alerts_html = "<tr><td colspan='6' style='text-align: center;'>No alerts linked.</td></tr>"
+        alerts_html = f"<tr><td colspan='6' style='text-align: center;'>{t['no_alerts']}</td></tr>"
 
     html_content = f"""
     <html>
     <head>
         <meta charset="utf-8">
-        <title>KanadShield Case Report - {case['title']}</title>
+        <title>{t['title_prefix']}{case['title']}</title>
         <style>
             body {{
                 font-family: Arial, sans-serif;
@@ -300,39 +402,39 @@ async def export_case_report(
     </head>
     <body>
         <div class="header">
-            <div class="logo">KanadShield Forensic Investigation</div>
-            <div class="subtitle">Official Evidence & Incident Report • Generated {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
+            <div class="logo">{t['logo_text']}</div>
+            <div class="subtitle">{t['subtitle']} {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}</div>
         </div>
         
-        <h1>Case: {case['title']}</h1>
+        <h1>{t['case']} {case['title']}</h1>
         
         <div class="meta-grid">
             <div class="meta-row">
-                <div class="meta-label">Case ID:</div>
+                <div class="meta-label">{t['case_id']}</div>
                 <div class="meta-value" style="font-family: monospace;">{case['case_id']}</div>
             </div>
             <div class="meta-row">
-                <div class="meta-label">Status:</div>
+                <div class="meta-label">{t['status']}</div>
                 <div class="meta-value" style="text-transform: uppercase; font-weight: bold;">{case['status']}</div>
             </div>
             <div class="meta-row">
-                <div class="meta-label">Created At:</div>
+                <div class="meta-label">{t['created_at']}</div>
                 <div class="meta-value">{case['created_at'].strftime('%Y-%m-%d %H:%M:%S') if case['created_at'] else '-'}</div>
             </div>
         </div>
         
-        <h2>Investigator Notes</h2>
-        <div class="notes">{case['notes'] or 'No investigator notes added.'}</div>
+        <h2>{t['investigator_notes']}</h2>
+        <div class="notes">{case['notes'] or t['no_notes']}</div>
         
-        <h2>Evidence Files</h2>
+        <h2>{t['evidence_files']}</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Session ID</th>
-                    <th>Filename</th>
-                    <th>SHA-256 Cryptographic Hash</th>
-                    <th>Packets</th>
-                    <th>Ingestion Date</th>
+                    <th>{t['session_id']}</th>
+                    <th>{t['filename']}</th>
+                    <th>{t['hash']}</th>
+                    <th>{t['packets']}</th>
+                    <th>{t['ingestion_date']}</th>
                 </tr>
             </thead>
             <tbody>
@@ -340,15 +442,15 @@ async def export_case_report(
             </tbody>
         </table>
 
-        <h2>Chain of Custody Logs</h2>
+        <h2>{t['chain_of_custody']}</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Timestamp</th>
-                    <th>User</th>
-                    <th>Action</th>
-                    <th>Session ID</th>
-                    <th>IP Address</th>
+                    <th>{t['timestamp']}</th>
+                    <th>{t['user']}</th>
+                    <th>{t['action']}</th>
+                    <th>{t['session_id']}</th>
+                    <th>{t['ip_address']}</th>
                 </tr>
             </thead>
             <tbody>
@@ -356,16 +458,16 @@ async def export_case_report(
             </tbody>
         </table>
         
-        <h2>Linked Alerts</h2>
+        <h2>{t['linked_alerts']}</h2>
         <table>
             <thead>
                 <tr>
-                    <th>Fired At</th>
-                    <th>Rule Name</th>
-                    <th>Severity</th>
-                    <th>Source IP</th>
-                    <th>Destination IP</th>
-                    <th>Description</th>
+                    <th>{t['fired_at']}</th>
+                    <th>{t['rule_name']}</th>
+                    <th>{t['severity']}</th>
+                    <th>{t['source_ip']}</th>
+                    <th>{t['dest_ip']}</th>
+                    <th>{t['description']}</th>
                 </tr>
             </thead>
             <tbody>

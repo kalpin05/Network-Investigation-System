@@ -20,6 +20,7 @@ export default function Cases() {
   const [newNotes, setNewNotes] = useState('')
   const [alerts, setAlerts] = useState([])
   const [selectedAlerts, setSelectedAlerts] = useState([])
+  const [exportLang, setExportLang] = useState('en')
 
   useEffect(() => {
     loadCases()
@@ -59,7 +60,7 @@ export default function Cases() {
 
   const handleExportPDF = async (caseId) => {
     try {
-      const response = await axios.get(`${API}/api/cases/${caseId}/export`, {
+      const response = await axios.get(`${API}/api/cases/${caseId}/export?lang=${exportLang}`, {
         responseType: 'blob'
       })
       const url = window.URL.createObjectURL(new Blob([response.data]))
@@ -220,6 +221,15 @@ export default function Cases() {
               </div>
 
               <div className="flex gap-3">
+                <select
+                  value={exportLang}
+                  onChange={(e) => setExportLang(e.target.value)}
+                  className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
+                >
+                  <option value="en">English</option>
+                  <option value="hi">Hindi</option>
+                  <option value="es">Español</option>
+                </select>
                 <button
                   onClick={() => handleExportPDF(caseDetail.case_id)}
                   className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"

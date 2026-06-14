@@ -7,6 +7,7 @@ import Alerts from './pages/Alerts'
 import Cases from './pages/Cases'
 import MLTraining from './pages/MLTraining'
 import Login from './pages/Login'
+import axios from 'axios'
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -20,6 +21,19 @@ export default function App() {
     localStorage.clear()
     setUser(null)
   }
+
+  useEffect(() => {
+    const interceptor = axios.interceptors.response.use(
+      response => response,
+      error => {
+        if (error.response && error.response.status === 401) {
+          handleLogout()
+        }
+        return Promise.reject(error)
+      }
+    )
+    return () => axios.interceptors.response.eject(interceptor)
+  }, [])
 
   if (!user) return <Login onLogin={setUser} />
 
