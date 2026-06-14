@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Activity, ShieldAlert, Cpu } from 'lucide-react'
 import axios from 'axios'
 import StreamModal from './StreamModal'
+import ThreatIntelModal from './ThreatIntelModal'
 
 const API = 'http://localhost:8000'
 
@@ -12,6 +13,8 @@ export default function PacketTable({ sessionId }) {
   
   const [streamModalOpen, setStreamModalOpen] = useState(false)
   const [selectedPacket, setSelectedPacket] = useState(null)
+  
+  const [intelIp, setIntelIp] = useState(null)
 
   useEffect(() => {
     if (!sessionId) return
@@ -100,10 +103,24 @@ export default function PacketTable({ sessionId }) {
                     </span>
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-300">
-                    {p.src_ip} {p.src_port > 0 && <span className="text-gray-500">:{p.src_port}</span>}
+                    <span 
+                      onClick={() => setIntelIp(p.src_ip)}
+                      className="cursor-pointer hover:text-blue-400 hover:underline transition-colors"
+                      title="View Threat Intelligence"
+                    >
+                      {p.src_ip}
+                    </span>
+                    {p.src_port > 0 && <span className="text-gray-500">:{p.src_port}</span>}
                   </td>
                   <td className="px-4 py-3 font-mono text-gray-300">
-                    {p.dst_ip} {p.dst_port > 0 && <span className="text-gray-500">:{p.dst_port}</span>}
+                    <span 
+                      onClick={() => setIntelIp(p.dst_ip)}
+                      className="cursor-pointer hover:text-blue-400 hover:underline transition-colors"
+                      title="View Threat Intelligence"
+                    >
+                      {p.dst_ip}
+                    </span>
+                    {p.dst_port > 0 && <span className="text-gray-500">:{p.dst_port}</span>}
                   </td>
                   <td className="px-4 py-3 text-right font-mono text-gray-300">{p.packet_length?.toLocaleString()}</td>
                   <td className="px-4 py-3 text-gray-400 font-mono truncate max-w-xs">
@@ -137,6 +154,13 @@ export default function PacketTable({ sessionId }) {
           packet={selectedPacket} 
           sessionId={selectedPacket.session_id || sessionId} 
           onClose={() => setStreamModalOpen(false)} 
+        />
+      )}
+
+      {intelIp && (
+        <ThreatIntelModal 
+          ip={intelIp} 
+          onClose={() => setIntelIp(null)} 
         />
       )}
     </div>
