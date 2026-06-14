@@ -20,8 +20,12 @@ def shannon_entropy(data: bytes) -> float:
     probs = [f / len(data) for f in freq.values()]
     return -sum(p * math.log2(p) for p in probs if p > 0)
 
-def parse_pcap(filepath: str, session_id: str) -> list[dict]:
-    cap = pyshark.FileCapture(filepath, keep_packets=False)
+def parse_pcap(filepath: str, session_id: str, keylog_filepath: str = None) -> list[dict]:
+    override_prefs = {}
+    if keylog_filepath:
+        override_prefs['tls.keylog_file'] = keylog_filepath
+        
+    cap = pyshark.FileCapture(filepath, keep_packets=False, override_prefs=override_prefs)
     packets = []
     for pkt in cap:
         try:
@@ -67,6 +71,7 @@ def parse_pcap(filepath: str, session_id: str) -> list[dict]:
 async def upload_pcap(
     request: Request,
     file: UploadFile = File(...),
+    keylog_file: UploadFile = File(None),
     current_user: dict = Depends(check_role(["admin", "investigator"]))
 ):
     data = await file.read()
@@ -77,8 +82,15 @@ async def upload_pcap(
     filepath = os.path.join(PCAP_STORAGE, f"{session_id}.pcap")
     with open(filepath, "wb") as f:
         f.write(data)
+        
+    keylog_filepath = None
+    if keylog_file and keylog_file.filename:
+        keylog_data = await keylog_file.read()
+        keylog_filepath = os.path.join(PCAP_STORAGE, f"{session_id}.keylog")
+        with open(keylog_filepath, "wb") as f:
+            f.write(keylog_data)
 
-    packets = await asyncio.to_thread(parse_pcap, filepath, session_id)
+    packets = await asyncio.to_thread(parse_pcap, filepath, session_id, keylog_filepath)
     index_packets(packets)
 
     # Run detection
@@ -165,13 +177,16 @@ async def get_tcp_stream(
     if not os.path.exists(filepath):
         return {"error": "PCAP file not found"}
 
+    keylog_filepath = os.path.join(PCAP_STORAGE, f"{session_id}.keylog")
+
     try:
-        # tshark -r file.pcap -q -z follow,tcp,ascii,src:sport,dst:dport
-        cmd = [
-            "tshark", "-r", filepath, "-q",
-            "-z", f"follow,tcp,ascii,{src_ip}:{src_port},{dst_ip}:{dst_port}"
-        ]
-        
+        cmd = ["tshark", "-r", filepath, "-q"]
+        if os.path.exists(keylog_filepath):
+            cmd.extend(["-o", f"tls.keylog_file:{keylog_filepath}"])
+            cmd.extend(["-z", f"follow,tls,ascii,{src_ip}:{src_port},{dst_ip}:{dst_port}"])
+        else:
+            cmd.extend(["-z", f"follow,tcp,ascii,{src_ip}:{src_port},{dst_ip}:{dst_port}"])
+            
         process = await asyncio.create_subprocess_exec(
             *cmd,
             stdout=asyncio.subprocess.PIPE,

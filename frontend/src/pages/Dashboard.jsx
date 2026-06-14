@@ -11,6 +11,7 @@ export default function Dashboard() {
   const [stats, setStats] = useState({ sessions: 0, packets: 0, alerts: 0 })
   const [selectedSessionId, setSelectedSessionId] = useState(null)
   const [custodyLogs, setCustodyLogs] = useState([])
+  const [showUploadModal, setShowUploadModal] = useState(false)
 
   const fetchCustodyLogs = () => {
     axios.get(`${API}/api/custody`)
@@ -29,13 +30,15 @@ export default function Dashboard() {
     fetchCustodyLogs()
   }, [])
 
-  const handleUpload = async (e) => {
-    const file = e.target.files[0]
-    if (!file) return
+  const handleUploadSubmit = async (pcapFile, keylogFile) => {
+    if (!pcapFile) return
     setUploading(true)
     const form = new FormData()
-    form.append('file', file)
+    form.append('file', pcapFile)
+    if (keylogFile) form.append('keylog_file', keylogFile)
+    
     try {
+      setShowUploadModal(false)
       const res = await axios.post(`${API}/api/pcap/upload`, form)
       const r = await axios.get(`${API}/api/sessions`)
       setSessions(r.data)
@@ -72,12 +75,22 @@ export default function Dashboard() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-white">Dashboard</h1>
-        <label className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors">
+        <button 
+          onClick={() => setShowUploadModal(true)}
+          className="flex items-center gap-2 bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg cursor-pointer transition-colors"
+        >
           <Upload size={16} />
           {uploading ? 'Uploading...' : 'Upload PCAP'}
-          <input type="file" accept=".pcap,.pcapng" onChange={handleUpload} className="hidden" />
-        </label>
+        </button>
       </div>
+
+      {showUploadModal && (
+        <UploadModal 
+          onClose={() => setShowUploadModal(false)}
+          onSubmit={handleUploadSubmit}
+          uploading={uploading}
+        />
+      )}
 
       {/* Stats */}
       <div className="grid grid-cols-3 gap-4">
@@ -257,6 +270,64 @@ function CustodyLogs({ logs }) {
           )}
         </tbody>
       </table>
+    </div>
+  )
+}
+
+function UploadModal({ onClose, onSubmit, uploading }) {
+  const [pcapFile, setPcapFile] = useState(null)
+  const [keylogFile, setKeylogFile] = useState(null)
+
+  return (
+    <div className="fixed inset-0 bg-black/70 flex items-center justify-center z-50">
+      <div className="bg-gray-900 border border-gray-700 rounded-2xl p-6 w-full max-w-lg space-y-5">
+        <div className="flex justify-between items-center border-b border-gray-800 pb-3">
+          <h2 className="text-xl font-bold text-white">Upload Capture Session</h2>
+        </div>
+
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2">1. PCAP File (Required)</label>
+            <input 
+              type="file" 
+              accept=".pcap,.pcapng" 
+              onChange={e => setPcapFile(e.target.files[0])}
+              className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-900/40 file:text-blue-300 hover:file:bg-blue-900/60 cursor-pointer"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-semibold text-gray-300 mb-2 flex items-center gap-2">
+              2. TLS Keylog File (Optional) <span className="px-2 py-0.5 rounded text-[10px] bg-purple-900/50 text-purple-300">Decryption</span>
+            </label>
+            <p className="text-xs text-gray-500 mb-2">Upload the SSL/TLS pre-master secret log file to decrypt HTTPS traffic automatically.</p>
+            <input 
+              type="file" 
+              accept=".log,.txt" 
+              onChange={e => setKeylogFile(e.target.files[0])}
+              className="block w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-gray-800 file:text-gray-300 hover:file:bg-gray-700 cursor-pointer"
+            />
+          </div>
+        </div>
+
+        <div className="flex gap-3 pt-3">
+          <button 
+            onClick={() => onSubmit(pcapFile, keylogFile)}
+            disabled={!pcapFile || uploading}
+            className={`flex-1 py-2.5 rounded-lg text-sm font-semibold transition-colors
+              ${(!pcapFile || uploading) ? 'bg-gray-800 text-gray-500 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 text-white cursor-pointer'}`}
+          >
+            {uploading ? 'Processing...' : 'Upload & Analyze'}
+          </button>
+          <button 
+            onClick={onClose}
+            disabled={uploading}
+            className="flex-1 bg-gray-800 hover:bg-gray-700 text-white py-2.5 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
     </div>
   )
 }
