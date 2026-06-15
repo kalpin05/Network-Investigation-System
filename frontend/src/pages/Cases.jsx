@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink } from 'lucide-react'
+import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink, Download, Loader2 } from 'lucide-react'
 import axios from 'axios'
+import { api } from '../api/client'
 import StreamModal from '../components/StreamModal'
 import { AttackChain } from '../components/AttackChain'
 
@@ -23,6 +24,8 @@ export default function Cases() {
   const [alerts, setAlerts] = useState([])
   const [selectedAlerts, setSelectedAlerts] = useState([])
   const [exportLang, setExportLang] = useState('en')
+  const [pdfLoading, setPdfLoading] = useState(false)
+  const [pdfMsg, setPdfMsg] = useState('')
 
   useEffect(() => {
     loadCases()
@@ -61,20 +64,45 @@ export default function Cases() {
   }
 
   const handleExportPDF = async (caseId) => {
+    setPdfLoading(true)
+    setPdfMsg('')
     try {
-      const response = await axios.get(`${API}/api/cases/${caseId}/export?lang=${exportLang}`, {
+      const response = await api.get(`/api/cases/${caseId}/export?lang=${exportLang}`, {
         responseType: 'blob'
       })
-      const url = window.URL.createObjectURL(new Blob([response.data]))
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
       const link = document.createElement('a')
       link.href = url
-      link.setAttribute('download', `case_report_${caseId.slice(0, 8)}.pdf`)
+      link.setAttribute('download', `kanadshield_case_${caseId.slice(0, 8)}.pdf`)
+      document.body.appendChild(link)
+      link.click()
+      link.remove()
+      window.URL.revokeObjectURL(url)
+      setPdfMsg('✅ PDF downloaded!')
+    } catch (err) {
+      console.error('PDF export failed', err)
+      setPdfMsg('❌ Export failed. Try again.')
+    } finally {
+      setPdfLoading(false)
+      setTimeout(() => setPdfMsg(''), 4000)
+    }
+  }
+
+  const handleExportEvidence = async (sessionId) => {
+    if (!sessionId) { alert('No session linked to this case.'); return }
+    try {
+      const response = await api.get(`/api/evidence/${sessionId}`, { responseType: 'blob' })
+      const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }))
+      const link = document.createElement('a')
+      link.href = url
+      link.setAttribute('download', `kanadshield_evidence_${sessionId.slice(0, 8)}.zip`)
       document.body.appendChild(link)
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
     } catch (err) {
-      console.error('PDF export failed', err)
+      console.error('Evidence export failed', err)
+      alert('Evidence export failed. Check if PCAP file exists.')
     }
   }
 
@@ -228,23 +256,37 @@ export default function Cases() {
                   onChange={(e) => setExportLang(e.target.value)}
                   className="bg-gray-800 border border-gray-700 text-white px-3 py-2 rounded-lg text-sm focus:outline-none focus:border-blue-500"
                 >
-                  <option value="en">English</option>
-                  <option value="hi">Hindi</option>
-                  <option value="gu">Gujarati</option>
-                  <option value="es">Español</option>
-                  <option value="fr">Français</option>
-                  <option value="de">Deutsch</option>
-                  <option value="zh">中文 (Chinese)</option>
-                  <option value="ja">日本語 (Japanese)</option>
-                  <option value="ru">Русский (Russian)</option>
-                  <option value="ar">العربية (Arabic)</option>
+                  <option value="en">🇬🇧 English</option>
+                  <option value="hi">🇮🇳 Hindi</option>
+                  <option value="gu">🇮🇳 Gujarati</option>
+                  <option value="es">🇪🇸 Español</option>
+                  <option value="fr">🇫🇷 Français</option>
+                  <option value="de">🇩🇪 Deutsch</option>
+                  <option value="zh">🇨🇳 中文</option>
+                  <option value="ja">🇯🇵 日本語</option>
+                  <option value="ru">🇷🇺 Русский</option>
+                  <option value="ar">🇸🇦 العربية</option>
                 </select>
                 <button
                   onClick={() => handleExportPDF(caseDetail.case_id)}
-                  className="flex items-center gap-2 bg-red-700 hover:bg-red-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                  disabled={pdfLoading}
+                  className="flex items-center gap-2 bg-red-700 hover:bg-red-600 disabled:opacity-60 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
                 >
-                  <FileText size={16} /> Export PDF Report
+                  {pdfLoading
+                    ? <><Loader2 size={15} className="animate-spin" /> Generating...</>
+                    : <><FileText size={16} /> Export PDF Report</>}
                 </button>
+                <button
+                  onClick={() => handleExportEvidence(caseDetail.alerts?.[0]?.session_id)}
+                  className="flex items-center gap-2 bg-indigo-700 hover:bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
+                >
+                  <Download size={16} /> Evidence ZIP
+                </button>
+                {pdfMsg && (
+                  <span className={`text-xs font-medium px-2 py-1 rounded ${
+                    pdfMsg.startsWith('✅') ? 'bg-green-900/50 text-green-400' : 'bg-red-900/50 text-red-400'
+                  }`}>{pdfMsg}</span>
+                )}
               </div>
 
               {/* Notes */}

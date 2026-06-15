@@ -375,15 +375,24 @@ async def download_evidence(
         )
         
     pcap_path = os.path.join(PCAP_STORAGE, f"{session_id}.pcap")
-    if not os.path.exists(pcap_path):
-        raise HTTPException(status_code=404, detail="PCAP file not found on server")
+    pcap_exists = os.path.exists(pcap_path)
 
     # Create ZIP in memory
     zip_buffer = io.BytesIO()
     with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zip_file:
-        # Write PCAP file using its original filename
-        zip_file.write(pcap_path, arcname=session["filename"])
-        
+        # Write PCAP file if it exists on disk
+        if pcap_exists:
+            zip_file.write(pcap_path, arcname=session["filename"])
+        else:
+            # Placeholder note when PCAP not stored (e.g. seeded demo sessions)
+            zip_file.writestr(
+                "PCAP_NOT_AVAILABLE.txt",
+                f"PCAP file for session {session_id} is not stored on this server.\n"
+                f"Original filename: {session['filename']}\n"
+                f"SHA-256 (recorded at upload): {session['sha256_hash']}\n"
+                f"This can occur for demo/seeded sessions without a real upload.\n"
+            )
+
         # Write SHA-256 hash file
         hash_content = (
             f"KanadShield Evidence Hash File\n"
@@ -393,9 +402,10 @@ async def download_evidence(
             f"SHA-256     : {session['sha256_hash']}\n"
             f"Upload Time : {session['upload_time']}\n"
             f"Packet Count: {session['packet_count']}\n"
+            f"PCAP on disk: {'YES' if pcap_exists else 'NO (demo session)'}\n"
         )
         zip_file.writestr("sha256_verification.txt", hash_content)
-        
+
         # Chain of custody log file
         custody_lines = [
             "KanadShield Chain of Custody Log",
@@ -414,7 +424,7 @@ async def download_evidence(
                 f"{row['ip_address']}"
             )
         zip_file.writestr("chain_of_custody.txt", "\n".join(custody_lines))
-        
+
     zip_buffer.seek(0)
 
     return StreamingResponse(
