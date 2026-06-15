@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink } from 'lucide-react'
 import axios from 'axios'
 import StreamModal from '../components/StreamModal'
+import { AttackChain } from '../components/AttackChain'
 
 
 const API = 'http://localhost:8000'
@@ -281,6 +282,9 @@ export default function Cases() {
                   )}
                 </div>
               </div>
+
+              {/* Attack kill chain timeline */}
+              <AttackChain caseId={caseDetail.case_id} />
             </div>
           )}
         </div>

@@ -94,3 +94,86 @@ async def update_case(
                     "UPDATE alerts SET case_id = $1 WHERE alert_id = $2", case_id, alert_id
                 )
     return {"case_id": case_id, "updated": True}
+
+
+@router.get("/api/cases/{case_id}/attack-chain")
+async def get_attack_chain(
+    case_id: str,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
+    """
+    Returns alerts sorted chronologically with MITRE tactic ordering
+    to reconstruct the attack kill chain.
+    """
+    pool = await get_pool()
+    async with pool.acquire() as conn:
+        alerts = await conn.fetch(
+            "SELECT * FROM alerts WHERE case_id = $1 ORDER BY fired_at ASC",
+            case_id
+        )
+
+    # MITRE kill chain ordering (lower = earlier in attack)
+    TACTIC_ORDER = {
+        "T1046":    1,  # Recon: Network Service Discovery
+        "T1595":    1,  # Recon: Active Scanning
+        "T1498.001":2,  # Initial: SYN Flood
+        "T1071.004":3,  # C2: DNS Tunnel
+        "T1071.001":3,  # C2: Web Protocols / TLS Fingerprint
+        "T1071":    3,  # C2: Command and Control
+        "T1095":    3,  # C2: ICMP Covert
+        "T1571":    3,  # C2: Non-Standard Port
+        "T1041":    4,  # Exfil: Over C2 Channel
+        "T1562":    5,  # Impact: Impair Defenses
+    }
+
+    chain = []
+    for i, alert in enumerate(alerts):
+        # Dynamically extract MITRE ID if present in description
+        desc = alert.get("description", "")
+        mitre_id = ""
+        if "MITRE " in desc:
+            try:
+                parts = desc.split("MITRE ")
+                if len(parts) > 1:
+                    mitre_id = parts[1].split(" ")[0].strip()
+            except Exception:
+                pass
+        
+        # Fallback based on rule_name
+        if not mitre_id:
+            rule_name = alert.get("rule_name", "")
+            if rule_name == "PORT_SCAN":
+                mitre_id = "T1046"
+            elif rule_name == "SYN_FLOOD":
+                mitre_id = "T1498.001"
+            elif rule_name == "DNS_TUNNEL":
+                mitre_id = "T1071.004"
+            elif rule_name == "ICMP_COVERT":
+                mitre_id = "T1095"
+            elif rule_name == "MALWARE_PORT":
+                mitre_id = "T1571"
+            elif rule_name == "SUSPICIOUS_TLD_POST" or rule_name == "MALICIOUS_TLS_FINGERPRINT":
+                mitre_id = "T1071.001"
+            elif rule_name == "C2_BEACONING":
+                mitre_id = "T1071"
+            elif rule_name == "LARGE_EXFILTRATION":
+                mitre_id = "T1041"
+            elif rule_name == "ANOMALY":
+                mitre_id = "T1562"
+
+        tactic_stage = TACTIC_ORDER.get(mitre_id, 3)
+        chain.append({
+            **dict(alert),
+            "step": i + 1,
+            "mitre_id": mitre_id,
+            "tactic_stage": tactic_stage,
+            "stage_label": [
+                "", "Reconnaissance", "Initial Access / Weaponization",
+                "Command & Control", "Exfiltration", "Impact"
+            ][min(tactic_stage, 5)],
+        })
+
+    # Sort by tactic stage first, then time
+    chain.sort(key=lambda x: (x["tactic_stage"], str(x["fired_at"])))
+
+    return {"case_id": case_id, "chain": chain, "total_steps": len(chain)}
