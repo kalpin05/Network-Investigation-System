@@ -1,6 +1,7 @@
 import axios from 'axios'
 
-axios.defaults.baseURL = 'http://localhost:8000'
+const apiBase = window.location.protocol + '//' + window.location.hostname + ':8000'
+axios.defaults.baseURL = apiBase
 
 axios.interceptors.request.use(config => {
   const token = localStorage.getItem('token')

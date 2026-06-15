@@ -5,7 +5,7 @@ import StreamModal from '../components/StreamModal'
 import { AttackChain } from '../components/AttackChain'
 
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 const STATUS_CONFIG = {
   open:          { icon: Clock,         color: 'text-yellow-400', bg: 'bg-yellow-900/30', border: 'border-yellow-700' },

@@ -115,26 +115,64 @@ async def get_node_detail(
     # Get top connections from ES
     query = {
         "size": 0,
-        "query": {"bool": {"should": [
-            {"term": {"src_ip": ip}},
-            {"term": {"dst_ip": ip}},
-        ]}},
+        "query": {
+            "bool": {
+                "should": [
+                    {"term": {"src_ip": ip}},
+                    {"term": {"dst_ip": ip}},
+                ]
+            }
+        },
         "aggs": {
-            "top_peers": {
-                "terms": {
-                    "field": "dst_ip" if True else "src_ip",
-                    "size": 10
-                },
-                "aggs": {"bytes": {"sum": {"field": "packet_length"}}}
+            "peers_as_src": {
+                "filter": {"term": {"src_ip": ip}},
+                "aggs": {
+                    "destinations": {
+                        "terms": {"field": "dst_ip", "size": 100},
+                        "aggs": {"bytes": {"sum": {"field": "packet_length"}}}
+                    }
+                }
+            },
+            "peers_as_dst": {
+                "filter": {"term": {"dst_ip": ip}},
+                "aggs": {
+                    "sources": {
+                        "terms": {"field": "src_ip", "size": 100},
+                        "aggs": {"bytes": {"sum": {"field": "packet_length"}}}
+                    }
+                }
             }
         }
     }
 
+    top_connections = []
     try:
         result = es.search(index=PACKET_INDEX, body=query)
-        peers = result["aggregations"]["top_peers"]["buckets"]
-    except Exception:
-        peers = []
+        aggs = result.get("aggregations", {})
+        
+        from collections import defaultdict
+        merged_peers = defaultdict(int)
+        
+        # Process destinations when current ip is the source
+        src_buckets = aggs.get("peers_as_src", {}).get("destinations", {}).get("buckets", [])
+        for b in src_buckets:
+            peer_ip = b["key"]
+            if peer_ip != ip:
+                merged_peers[peer_ip] += int(b.get("bytes", {}).get("value", 0))
+                
+        # Process sources when current ip is the destination
+        dst_buckets = aggs.get("peers_as_dst", {}).get("sources", {}).get("buckets", [])
+        for b in dst_buckets:
+            peer_ip = b["key"]
+            if peer_ip != ip:
+                merged_peers[peer_ip] += int(b.get("bytes", {}).get("value", 0))
+                
+        # Sort and take top 10
+        sorted_peers = sorted(merged_peers.items(), key=lambda x: x[1], reverse=True)[:10]
+        top_connections = [{"ip": peer, "bytes": b_count} for peer, b_count in sorted_peers]
+    except Exception as e:
+        print(f"[ES] Peer connections query failed: {e}")
+        top_connections = []
 
     # Simulate OSINT & Geo-IP Data
     osint_data = {
@@ -187,7 +225,7 @@ async def get_node_detail(
         "osint": osint_data,
         "geo": geo_data,
         "alerts": [dict(a) for a in alerts],
-        "top_connections": [{"ip": b["key"], "bytes": int(b["bytes"]["value"])} for b in peers],
+        "top_connections": top_connections,
     }
 
 

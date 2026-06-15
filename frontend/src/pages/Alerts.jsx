@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react'
 import { AlertTriangle, AlertCircle, Info, RefreshCw, ShieldAlert, X, Copy, Check, Terminal } from 'lucide-react'
 import axios from 'axios'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 const SEVERITY_CONFIG = {
   critical: { color: 'red',    bg: 'bg-red-900/50',    text: 'text-red-300',    border: 'border-red-700',    icon: AlertCircle },

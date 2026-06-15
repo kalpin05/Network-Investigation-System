@@ -8,7 +8,7 @@ import 'reactflow/dist/style.css'
 import axios from 'axios'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 // Layout: simple force-like grid placement
 function layoutNodes(nodes) {

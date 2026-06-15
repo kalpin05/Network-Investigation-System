@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { X, Loader2, FileText, Download } from 'lucide-react'
 import axios from 'axios'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function StreamModal({ packet, sessionId, onClose }) {
   const [streamData, setStreamData] = useState(null)

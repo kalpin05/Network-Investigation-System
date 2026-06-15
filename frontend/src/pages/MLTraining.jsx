@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { Brain, Settings, AlertTriangle, RefreshCw, CheckCircle2, ShieldAlert } from 'lucide-react'
 import axios from 'axios'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function MLTraining() {
   const [config, setConfig] = useState(null)

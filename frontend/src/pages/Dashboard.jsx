@@ -4,7 +4,7 @@ import axios from 'axios'
 import PacketTable from '../components/PacketTable'
 import DPIPanel from '../components/DPIPanel'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function Dashboard() {
   const [sessions, setSessions] = useState([])

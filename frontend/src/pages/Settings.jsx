@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react'
 
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+
 export default function Settings() {
   const [config, setConfig] = useState({
     is_enabled: false,
@@ -15,7 +17,7 @@ export default function Settings() {
 
   const fetchConfig = async () => {
     try {
-      const res = await fetch('http://localhost:8000/api/settings/siem', {
+      const res = await fetch(`${API}/api/settings/siem`, {
         headers: { 'Authorization': `Bearer ${localStorage.getItem('token')}` }
       })
       if (res.ok) {
@@ -32,7 +34,7 @@ export default function Settings() {
     setLoading(true)
     setMessage('')
     try {
-      const res = await fetch('http://localhost:8000/api/settings/siem', {
+      const res = await fetch(`${API}/api/settings/siem`, {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

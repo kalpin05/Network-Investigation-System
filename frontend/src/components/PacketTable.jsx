@@ -4,7 +4,7 @@ import axios from 'axios'
 import StreamModal from './StreamModal'
 import ThreatIntelModal from './ThreatIntelModal'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function PacketTable({ sessionId }) {
   const [packets, setPackets] = useState([])

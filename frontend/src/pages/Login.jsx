@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Shield } from 'lucide-react'
 import axios from 'axios'
 
-const API = 'http://localhost:8000'
+const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 export default function Login({ onLogin }) {
   const [creds, setCreds] = useState({ username: '', password: '' })

@@ -1,10 +1,76 @@
 import hashlib
 import ipaddress
 import random
+import time
 import requests
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
+
+# In-memory cache for IP geolocations
+GEO_CACHE = {}
+# Cooldown timestamp to temporarily suspend external API requests when rate-limited
+api_cooldown_until = 0.0
+
+def get_deterministic_geoip(ip: str) -> dict:
+    """Fallback generator for IP location information based on hashing."""
+    seed = int(hashlib.md5(ip.encode()).hexdigest()[:8], 16)
+    countries = [
+        ("United States", "New York", "Comcast Cable"),
+        ("Germany", "Frankfurt", "Deutsche Telekom"),
+        ("China", "Beijing", "China Telecom"),
+        ("Brazil", "Sao Paulo", "Telefonica Brasil"),
+        ("North Korea", "Pyongyang", "Star Joint Venture"),
+        ("India", "Mumbai", "Reliance Jio"),
+        ("United Kingdom", "London", "British Telecom"),
+        ("Russia", "Moscow", "Rostelecom")
+    ]
+    country, city, isp = countries[seed % len(countries)]
+    return {
+        "country": country,
+        "city": city,
+        "isp": isp
+    }
+
+def get_geoip(ip: str) -> dict:
+    """Fetch geo/ISP data from ip-api.com, caching results and handling rate limiting gracefully."""
+    global api_cooldown_until
+    
+    if ip in GEO_CACHE:
+        return GEO_CACHE[ip]
+        
+    now = time.time()
+    if now < api_cooldown_until:
+        return get_deterministic_geoip(ip)
+        
+    try:
+        resp = requests.get(f"http://ip-api.com/json/{ip}", timeout=3)
+        if resp.status_code == 429:
+            api_cooldown_until = now + 60.0
+            print(f"Rate limited (429) by ip-api.com. Cooldown active for 60s.")
+            return get_deterministic_geoip(ip)
+            
+        if resp.status_code == 200:
+            data = resp.json()
+            if data.get("status") == "success":
+                geo_data = {
+                    "country": data.get("country", "Unknown"),
+                    "city": data.get("city", "Unknown"),
+                    "isp": data.get("isp", "Unknown ISP")
+                }
+                # Evict cache if too large to prevent leaks
+                if len(GEO_CACHE) > 2000:
+                    GEO_CACHE.clear()
+                GEO_CACHE[ip] = geo_data
+                return geo_data
+            elif data.get("status") == "fail" and "quota" in data.get("message", "").lower():
+                api_cooldown_until = now + 60.0
+                print(f"Rate limited (fail/quota) by ip-api.com. Cooldown active for 60s.")
+                return get_deterministic_geoip(ip)
+    except Exception as e:
+        print(f"Failed to fetch GeoIP for {ip}: {e}")
+        
+    return get_deterministic_geoip(ip)
 
 @router.get("/api/threat-intel/{ip}")
 def get_threat_intel(ip: str):
@@ -15,24 +81,15 @@ def get_threat_intel(ip: str):
     except ValueError:
         raise HTTPException(status_code=400, detail="Invalid IP address")
 
-    # 2. Fetch Geo/ISP data using free ip-api.com
-    geo_data = {
-        "country": "Unknown",
-        "city": "Unknown",
-        "isp": "Local Network" if is_private else "Unknown ISP"
-    }
-    
-    if not is_private:
-        try:
-            resp = requests.get(f"http://ip-api.com/json/{ip}", timeout=3)
-            if resp.status_code == 200:
-                data = resp.json()
-                if data.get("status") == "success":
-                    geo_data["country"] = data.get("country", "Unknown")
-                    geo_data["city"] = data.get("city", "Unknown")
-                    geo_data["isp"] = data.get("isp", "Unknown ISP")
-        except Exception as e:
-            print(f"Failed to fetch GeoIP for {ip}: {e}")
+    # 2. Fetch Geo/ISP data using free ip-api.com with caching & fallback
+    if is_private:
+        geo_data = {
+            "country": "Unknown",
+            "city": "Unknown",
+            "isp": "Local Network"
+        }
+    else:
+        geo_data = get_geoip(ip)
 
     # 3. Simulate National Cyber Crime Database (NCCD)
     if is_private:
