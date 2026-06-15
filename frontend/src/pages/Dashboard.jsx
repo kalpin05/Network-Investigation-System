@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { Upload, Wifi, Shield, AlertTriangle, Download } from 'lucide-react'
+import { Upload, Wifi, Shield, AlertTriangle, Download, Database, BarChart3 } from 'lucide-react'
 import axios from 'axios'
 import PacketTable from '../components/PacketTable'
+import DPIPanel from '../components/DPIPanel'
 
 const API = 'http://localhost:8000'
 
@@ -12,6 +13,7 @@ export default function Dashboard() {
   const [selectedSessionId, setSelectedSessionId] = useState(null)
   const [custodyLogs, setCustodyLogs] = useState([])
   const [showUploadModal, setShowUploadModal] = useState(false)
+  const [activeTab, setActiveTab] = useState('packets')
 
   const fetchCustodyLogs = () => {
     axios.get(`${API}/api/custody`)
@@ -170,8 +172,39 @@ export default function Dashboard() {
         </div>
       )}
 
-      {/* Packet viewer table */}
-      <PacketTable sessionId={selectedSessionId} />
+      {/* Session Details Tabbed Navigation */}
+      {selectedSessionId && (
+        <div className="flex gap-4 border-b border-gray-800 pb-2 mt-6">
+          <button
+            onClick={() => setActiveTab('packets')}
+            className={`flex items-center gap-2 pb-2 text-sm font-semibold border-b-2 cursor-pointer transition-all ${
+              activeTab === 'packets'
+                ? 'border-blue-500 text-blue-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <Database size={16} /> Parsed Packets
+          </button>
+          <button
+            onClick={() => setActiveTab('dpi')}
+            className={`flex items-center gap-2 pb-2 text-sm font-semibold border-b-2 cursor-pointer transition-all ${
+              activeTab === 'dpi'
+                ? 'border-blue-500 text-blue-400'
+                : 'border-transparent text-gray-400 hover:text-white'
+            }`}
+          >
+            <BarChart3 size={16} /> Deep Packet Inspection (DPI)
+          </button>
+        </div>
+      )}
+
+      {selectedSessionId && activeTab === 'packets' && (
+        <PacketTable sessionId={selectedSessionId} />
+      )}
+
+      {selectedSessionId && activeTab === 'dpi' && (
+        <DPIPanel sessionId={selectedSessionId} />
+      )}
 
       {/* Chain of Custody Audit Log */}
       <CustodyLogs logs={custodyLogs} />

@@ -56,9 +56,30 @@ def parse_pcap(filepath: str, session_id: str, keylog_filepath: str = None) -> l
 
             if hasattr(pkt, 'tcp'):
                 doc["flags"] = str(pkt.tcp.flags) if hasattr(pkt.tcp, 'flags') else ""
+                if hasattr(pkt.tcp, 'payload'):
+                    try:
+                        payload_hex = str(pkt.tcp.payload).replace(':', '')
+                        payload_bytes = bytes.fromhex(payload_hex)
+                        doc["payload_entropy"] = shannon_entropy(payload_bytes)
+                    except Exception:
+                        pass
 
             if hasattr(pkt, 'dns') and hasattr(pkt.dns, 'qry_name'):
                 doc["dns_query"] = str(pkt.dns.qry_name)
+                if hasattr(pkt.dns, 'payload'):
+                    try:
+                        payload_hex = str(pkt.dns.payload).replace(':', '')
+                        payload_bytes = bytes.fromhex(payload_hex)
+                        doc["payload_entropy"] = shannon_entropy(payload_bytes)
+                    except Exception:
+                        pass
+            elif hasattr(pkt, 'udp') and hasattr(pkt.udp, 'payload'):
+                try:
+                    payload_hex = str(pkt.udp.payload).replace(':', '')
+                    payload_bytes = bytes.fromhex(payload_hex)
+                    doc["payload_entropy"] = shannon_entropy(payload_bytes)
+                except Exception:
+                    pass
 
             if hasattr(pkt, 'http'):
                 if hasattr(pkt.http, 'host'):
@@ -375,3 +396,46 @@ async def websocket_capture(websocket: WebSocket):
         sniffer.stop()
         await producer.stop()
         await consumer.stop()
+
+
+@router.get("/api/sessions/{session_id}/dpi")
+async def get_dpi_summary(
+    session_id: str,
+    current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
+):
+    """
+    Returns decoded protocol statistics for a session.
+    Answers: what protocols, what hosts contacted, any anomalies.
+    """
+    from db.elastic import es, PACKET_INDEX
+
+    query = {
+        "size": 0,
+        "query": {"term": {"session_id": session_id}},
+        "aggs": {
+            "protocols":    {"terms": {"field": "protocol",   "size": 20}},
+            "http_hosts":   {"terms": {"field": "http_host",  "size": 20}},
+            "dns_queries":  {"terms": {"field": "dns_query",  "size": 20}},
+            "dst_ports":    {"terms": {"field": "dst_port",   "size": 20}},
+            "avg_entropy":  {"avg":   {"field": "payload_entropy"}},
+            "high_entropy": {
+                "filter": {"range": {"payload_entropy": {"gt": 7.0}}},
+                "aggs": {"count": {"value_count": {"field": "payload_entropy"}}}
+            },
+        }
+    }
+
+    try:
+        result = es.search(index=PACKET_INDEX, body=query)
+        aggs = result["aggregations"]
+        return {
+            "session_id": session_id,
+            "protocols":   [{"name": b["key"], "count": b["doc_count"]} for b in aggs["protocols"]["buckets"]],
+            "http_hosts":  [{"host": b["key"], "count": b["doc_count"]} for b in aggs["http_hosts"]["buckets"]],
+            "dns_queries": [{"query": b["key"], "count": b["doc_count"]} for b in aggs["dns_queries"]["buckets"]],
+            "dst_ports":   [{"port": b["key"], "count": b["doc_count"]} for b in aggs["dst_ports"]["buckets"]],
+            "avg_entropy":       round(aggs["avg_entropy"]["value"] or 0, 3),
+            "high_entropy_pkts": aggs["high_entropy"]["count"]["value"],
+        }
+    except Exception as e:
+        return {"error": str(e)}
