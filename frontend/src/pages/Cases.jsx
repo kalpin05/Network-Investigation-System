@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink, Download, Loader2 } from 'lucide-react'
+import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink, Download, Loader2, Shield } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../api/client'
 import StreamModal from '../components/StreamModal'
@@ -26,6 +26,7 @@ export default function Cases() {
   const [exportLang, setExportLang] = useState('en')
   const [pdfLoading, setPdfLoading] = useState(false)
   const [pdfMsg, setPdfMsg] = useState('')
+  const [custodyLogs, setCustodyLogs] = useState([])
 
   useEffect(() => {
     loadCases()
@@ -34,9 +35,36 @@ export default function Cases() {
 
   const loadCases = () => axios.get(`${API}/api/cases`).then(r => setCases(r.data)).catch(err => console.error(err))
 
+  const loadCustodyLogs = async (caseAlerts) => {
+    if (!caseAlerts || caseAlerts.length === 0) {
+      setCustodyLogs([])
+      return
+    }
+    const sessionIds = [...new Set(caseAlerts.map(a => a.session_id).filter(Boolean))]
+    if (sessionIds.length === 0) {
+      setCustodyLogs([])
+      return
+    }
+    try {
+      const promises = sessionIds.map(sid => 
+        api.get('/api/custody', { params: { session_id: sid } })
+      )
+      const results = await Promise.all(promises)
+      const allLogs = results.flatMap(r => r.data)
+      const uniqueLogs = Array.from(new Map(allLogs.map(item => [item.log_id, item])).values())
+      uniqueLogs.sort((a, b) => new Date(b.accessed_at) - new Date(a.accessed_at))
+      setCustodyLogs(uniqueLogs)
+    } catch (err) {
+      console.error('Failed to load case custody logs', err)
+    }
+  }
+
   const openCase = (caseId) => {
     setSelected(caseId)
-    axios.get(`${API}/api/cases/${caseId}`).then(r => setCaseDetail(r.data)).catch(err => console.error(err))
+    axios.get(`${API}/api/cases/${caseId}`).then(r => {
+      setCaseDetail(r.data)
+      loadCustodyLogs(r.data.alerts)
+    }).catch(err => console.error(err))
   }
 
   const createCase = async () => {
@@ -79,6 +107,9 @@ export default function Cases() {
       link.remove()
       window.URL.revokeObjectURL(url)
       setPdfMsg('✅ PDF downloaded!')
+      if (caseDetail) {
+        loadCustodyLogs(caseDetail.alerts)
+      }
     } catch (err) {
       console.error('PDF export failed', err)
       setPdfMsg('❌ Export failed. Try again.')
@@ -100,6 +131,9 @@ export default function Cases() {
       link.click()
       link.remove()
       window.URL.revokeObjectURL(url)
+      if (caseDetail) {
+        loadCustodyLogs(caseDetail.alerts)
+      }
     } catch (err) {
       console.error('Evidence export failed', err)
       alert('Evidence export failed. Check if PCAP file exists.')
@@ -327,6 +361,46 @@ export default function Cases() {
 
               {/* Attack kill chain timeline */}
               <AttackChain caseId={caseDetail.case_id} />
+
+              {/* Evidence Chain of Custody Log */}
+              <div className="bg-gray-800/40 border border-gray-700/60 rounded-xl p-4 space-y-3">
+                <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
+                  <Shield size={16} className="text-blue-400" />
+                  Evidence Chain of Custody Log
+                </h3>
+                <p className="text-xs text-gray-400">
+                  Secured chronological trail of actions involving this case's evidence.
+                </p>
+                <div className="space-y-2 max-h-56 overflow-y-auto">
+                  {custodyLogs.map((entry, i) => {
+                    const cfg = {
+                      upload: { label: 'Upload', color: 'text-emerald-400', bg: 'bg-emerald-950/30' },
+                      view: { label: 'View', color: 'text-sky-400', bg: 'bg-sky-950/30' },
+                      export: { label: 'Export', color: 'text-amber-400', bg: 'bg-amber-950/30' },
+                      export_report: { label: 'Report Export', color: 'text-amber-400', bg: 'bg-amber-950/30' },
+                      delete: { label: 'Delete', color: 'text-rose-400', bg: 'bg-rose-950/30' },
+                    }[entry.action] || { label: entry.action, color: 'text-gray-400', bg: 'bg-gray-900/30' }
+
+                    return (
+                      <div key={entry.log_id || i} className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 p-2.5 bg-gray-950/40 border border-gray-800/60 rounded-lg text-xs">
+                        <div className="flex items-center gap-2">
+                          <span className={`px-2 py-0.5 rounded-full font-medium text-[10px] ${cfg.color} ${cfg.bg}`}>
+                            {cfg.label}
+                          </span>
+                          <span className="text-white font-semibold">{entry.username || 'System Seed'}</span>
+                          <span className="text-gray-500 font-mono text-[10px]">({entry.ip_address || '127.0.0.1'})</span>
+                        </div>
+                        <span className="text-gray-400 font-mono text-[10px]">
+                          {new Date(entry.accessed_at).toLocaleString()}
+                        </span>
+                      </div>
+                    )
+                  })}
+                  {custodyLogs.length === 0 && (
+                    <p className="text-gray-600 text-xs text-center py-4">No access events logged for this evidence yet.</p>
+                  )}
+                </div>
+              </div>
             </div>
           )}
         </div>

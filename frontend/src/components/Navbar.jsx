@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom'
-import { Shield, Activity, AlertTriangle, FolderOpen, Network, Brain, Settings } from 'lucide-react'
+import { Shield, Activity, AlertTriangle, FolderOpen, Network, Brain, Settings, History } from 'lucide-react'
 
 const links = [
   { to: '/dashboard', label: 'Dashboard', icon: Activity },
   { to: '/graph', label: 'Flow Graph', icon: Network },
   { to: '/alerts', label: 'Alerts', icon: AlertTriangle },
   { to: '/cases', label: 'Cases', icon: FolderOpen },
+  { to: '/custody', label: 'Custody Log', icon: History, roles: ['admin', 'investigator'] },
   { to: '/kibana', label: 'Analytics (Kibana)', icon: Activity },
   { to: '/ml', label: 'AI Settings', icon: Brain },
   { to: '/settings', label: 'System Settings', icon: Settings },
@@ -13,6 +14,7 @@ const links = [
 
 export default function Navbar({ user, onLogout }) {
   const { pathname } = useLocation()
+  const visibleLinks = links.filter(link => !link.roles || link.roles.includes(user?.role))
   return (
     <nav className="bg-gray-900 border-b border-gray-800 px-6 py-3 flex items-center gap-8">
       <div className="flex items-center gap-2">
@@ -20,7 +22,7 @@ export default function Navbar({ user, onLogout }) {
         <span className="font-bold text-xl text-blue-400 tracking-wide">KanadShield</span>
       </div>
       <div className="flex gap-1">
-        {links.map(({ to, label, icon: Icon }) => (
+        {visibleLinks.map(({ to, label, icon: Icon }) => (
           <Link
             key={to}
             to={to}
