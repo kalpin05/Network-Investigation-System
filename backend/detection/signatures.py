@@ -172,6 +172,14 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "description": f"[MITRE T1041 - Exfiltration Over C2 Channel] Large outbound transfer detected: {bytes_sent} bytes sent."
                 })
 
+    # 6. C2 Beaconing Detection
+    try:
+        from .beaconing import detect_beaconing
+        beacon_alerts = detect_beaconing(packets)
+        alerts.extend(beacon_alerts)
+    except Exception as e:
+        print(f"[Beaconing] Error running detection: {e}")
+
     unique_alerts = {}
     for a in alerts:
         key = f"{a['rule_name']}_{a['src_ip']}_{a['dst_ip']}"
