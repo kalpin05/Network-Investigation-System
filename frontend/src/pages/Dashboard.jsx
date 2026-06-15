@@ -3,6 +3,7 @@ import { Upload, Wifi, Shield, AlertTriangle, Download, Database, BarChart3 } fr
 import axios from 'axios'
 import PacketTable from '../components/PacketTable'
 import DPIPanel from '../components/DPIPanel'
+import PacketTimeline from '../components/PacketTimeline'
 
 const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
@@ -108,6 +109,9 @@ export default function Dashboard() {
           </div>
         ))}
       </div>
+
+      {/* Packet Timeline Chart */}
+      <PacketTimeline sessionId={selectedSessionId} />
 
       {/* Sessions and Live Capture */}
       <div className="grid grid-cols-3 gap-6">
