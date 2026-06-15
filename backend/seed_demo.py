@@ -3,6 +3,11 @@
 KanadShield Demo Seed Script
 Run: docker-compose exec backend python seed_demo.py
 Seeds: 3 users + 2 sessions + 6 alerts + 1 case
+
+Demo Login Credentials:
+  admin        / demo123
+  investigator / demo123
+  viewer       / demo123
 """
 import asyncio
 import asyncpg
@@ -12,22 +17,24 @@ import uuid
 
 DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://kanadshield:password@postgres/kanadshield")
 
+# Real bcrypt hashes for password 'demo123'
+# Generated inside the container with: python -c "import bcrypt; print(bcrypt.hashpw(b'demo123', bcrypt.gensalt()).decode())"
+DEMO_PASSWORD_HASH = "$2b$12$IpiccGuHw21hBEZQJVh6vONlnjxtMNcHAiQhQ19gona3pGTw0DdNK"
+
 async def seed():
     conn = await asyncpg.connect(DATABASE_URL)
 
-    print("[SEED] Inserting demo users...")
-    # These are plain users. For simplicity and robustness in demo, passwords can be verified or bypassed in backend login.
-    # We will seed the three required roles.
+    print("[SEED] Inserting demo users (password: demo123)...")
     users = [
-        ("admin",       "$2b$12$seed_hash_admin",       "admin"),
-        ("investigator","$2b$12$seed_hash_investigator", "investigator"),
-        ("viewer",      "$2b$12$seed_hash_viewer",       "viewer"),
+        ("admin",       DEMO_PASSWORD_HASH, "admin"),
+        ("investigator",DEMO_PASSWORD_HASH, "investigator"),
+        ("viewer",      DEMO_PASSWORD_HASH, "viewer"),
     ]
     for username, pw_hash, role in users:
         await conn.execute("""
             INSERT INTO users (username, password_hash, role)
             VALUES ($1, $2, $3)
-            ON CONFLICT (username) DO NOTHING
+            ON CONFLICT (username) DO UPDATE SET password_hash = EXCLUDED.password_hash, role = EXCLUDED.role
         """, username, pw_hash, role)
 
     print("[SEED] Inserting demo sessions...")
