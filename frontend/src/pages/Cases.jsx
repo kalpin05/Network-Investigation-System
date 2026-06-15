@@ -95,7 +95,7 @@ export default function Cases() {
     setPdfLoading(true)
     setPdfMsg('')
     try {
-      const response = await api.get(`/api/cases/${caseId}/export?lang=${exportLang}`, {
+      const response = await api.get(`${API}/api/cases/${caseId}/export?lang=${exportLang}`, {
         responseType: 'blob'
       })
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/pdf' }))
@@ -122,7 +122,7 @@ export default function Cases() {
   const handleExportEvidence = async (sessionId) => {
     if (!sessionId) { alert('No session linked to this case.'); return }
     try {
-      const response = await api.get(`/api/evidence/${sessionId}`, { responseType: 'blob' })
+      const response = await api.get(`${API}/api/evidence/${sessionId}`, { responseType: 'blob' })
       const url = window.URL.createObjectURL(new Blob([response.data], { type: 'application/zip' }))
       const link = document.createElement('a')
       link.href = url
