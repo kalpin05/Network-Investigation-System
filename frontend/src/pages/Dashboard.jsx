@@ -117,7 +117,7 @@ export default function Dashboard() {
           <table className="w-full text-sm text-left">
             <thead className="bg-gray-800 text-gray-400">
               <tr>
-                {['Filename', 'Packets', 'Status', 'Uploaded', 'SHA-256', 'Evidence'].map(h => (
+                {['Filename', 'Packets', 'Threat Score', 'Status', 'Uploaded', 'SHA-256', 'Evidence'].map(h => (
                   <th key={h} className="px-4 py-3 text-left font-medium">{h}</th>
                 ))}
               </tr>
@@ -133,6 +133,9 @@ export default function Dashboard() {
                 >
                   <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3 text-blue-300 font-mono text-xs">{s.filename}</td>
                   <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3 text-white">{s.packet_count?.toLocaleString()}</td>
+                  <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3">
+                    <ThreatScoreBadge score={s.threat_score} />
+                  </td>
                   <td onClick={() => setSelectedSessionId(s.session_id)} className="px-4 py-3">
                     <span className={`px-2 py-1 rounded text-xs font-medium
                       ${s.status === 'complete' ? 'bg-green-900 text-green-300' : 'bg-yellow-900 text-yellow-300'}`}>
@@ -454,5 +457,19 @@ function TopPorts({ data }) {
         ))}
       </div>
     </div>
+  )
+}
+
+function ThreatScoreBadge({ score }) {
+  if (score === undefined || score === null) return <span className="text-gray-600 text-xs">—</span>
+  const color =
+    score >= 70 ? 'bg-red-900/40 text-red-300 border-red-700' :
+    score >= 40 ? 'bg-orange-900/40 text-orange-300 border-orange-700' :
+    score >= 20 ? 'bg-yellow-900/40 text-yellow-300 border-yellow-700' :
+                  'bg-green-900/40 text-green-300 border-green-700'
+  return (
+    <span className={`px-2 py-0.5 rounded border text-[11px] font-mono font-bold leading-none ${color}`}>
+      {score}/100
+    </span>
   )
 }

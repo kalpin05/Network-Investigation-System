@@ -162,6 +162,13 @@ async def upload_pcap(
                 session_id, a["rule_name"], a["severity"], a["src_ip"], a["dst_ip"], a["description"]
             )
 
+        # Compute and store overall threat score for this session
+        from utils.threat_score import compute_threat_score
+        try:
+            await compute_threat_score(session_id)
+        except Exception as e:
+            print(f"[Threat Score] Computation failed: {e}")
+
         # Publish alerts to live-alerts topic in Kafka for real-time WebSocket push
         if alerts:
             from aiokafka import AIOKafkaProducer

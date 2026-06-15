@@ -29,6 +29,7 @@ async def init_db():
                 sha256_hash CHAR(64),
                 packet_count INTEGER DEFAULT 0,
                 anomaly_score FLOAT,
+                threat_score INTEGER DEFAULT 0,
                 status TEXT DEFAULT 'processing'
             );
 
@@ -70,6 +71,8 @@ async def init_db():
                 destination_type TEXT,
                 updated_at TIMESTAMPTZ DEFAULT NOW()
             );
+
+            ALTER TABLE sessions ADD COLUMN IF NOT EXISTS threat_score INTEGER DEFAULT 0;
 
             INSERT INTO users (username, password_hash, role)
             VALUES 
