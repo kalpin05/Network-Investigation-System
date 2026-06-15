@@ -161,6 +161,15 @@ export default function Dashboard() {
         <LiveFeed />
       </div>
 
+      {/* Traffic Breakdowns (Top Talkers, Protocols, Ports) */}
+      {stats.top_talkers && stats.top_talkers.length > 0 && (
+        <div className="grid grid-cols-3 gap-6">
+          <TopTalkers data={stats.top_talkers} />
+          <TopProtocols data={stats.top_protocols} />
+          <TopPorts data={stats.top_ports} />
+        </div>
+      )}
+
       {/* Packet viewer table */}
       <PacketTable sessionId={selectedSessionId} />
 
@@ -178,7 +187,8 @@ function LiveFeed() {
   useEffect(() => {
     let ws = null
     if (active) {
-      ws = new WebSocket('ws://localhost:8000/ws/capture')
+      const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':8000/ws/capture'
+      ws = new WebSocket(wsUrl)
       ws.onmessage = (e) => {
         const pkt = JSON.parse(e.data)
         setPackets(prev => [pkt, ...prev].slice(0, 15))
@@ -327,6 +337,88 @@ function UploadModal({ onClose, onSubmit, uploading }) {
             Cancel
           </button>
         </div>
+      </div>
+    </div>
+  )
+}
+
+// ── Traffic breakdown panels ────────────────────────────────────────────────
+function TopTalkers({ data }) {
+  if (!data || data.length === 0) return null
+  const max = data[0]?.bytes || 1
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <h2 className="text-base font-semibold text-white mb-4 font-sans">Top Talkers</h2>
+      <div className="space-y-2">
+        {data.map((t, i) => (
+          <div key={t.ip}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-mono text-blue-300">{t.ip}</span>
+              <span className="text-gray-400">{(t.bytes / 1024).toFixed(1)} KB</span>
+            </div>
+            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${i === 0 ? 'bg-red-500' : 'bg-blue-500'}`}
+                style={{ width: `${(t.bytes / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TopProtocols({ data }) {
+  if (!data || data.length === 0) return null
+  const max = data[0]?.count || 1
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <h2 className="text-base font-semibold text-white mb-4 font-sans">Top Protocols</h2>
+      <div className="space-y-2">
+        {data.map((p, i) => (
+          <div key={p.protocol}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-mono text-green-300">{p.protocol}</span>
+              <span className="text-gray-400">{p.count} packets</span>
+            </div>
+            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${i === 0 ? 'bg-yellow-500' : 'bg-green-500'}`}
+                style={{ width: `${(p.count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TopPorts({ data }) {
+  if (!data || data.length === 0) return null
+  const max = data[0]?.count || 1
+
+  return (
+    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
+      <h2 className="text-base font-semibold text-white mb-4 font-sans">Top Destination Ports</h2>
+      <div className="space-y-2">
+        {data.map((p, i) => (
+          <div key={p.port}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="font-mono text-purple-300">Port {p.port}</span>
+              <span className="text-gray-400">{p.count} packets</span>
+            </div>
+            <div className="h-1.5 bg-gray-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full ${i === 0 ? 'bg-purple-500' : 'bg-indigo-500'}`}
+                style={{ width: `${(p.count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
       </div>
     </div>
   )
