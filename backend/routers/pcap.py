@@ -323,6 +323,8 @@ async def search_packets(
     src_ip: str = None,
     dst_ip: str = None,
     protocol: str = None,
+    start_time: str = None,
+    end_time: str = None,
     limit: int = 100,
     current_user: dict = Depends(check_role(["admin", "investigator", "viewer"]))
 ):
@@ -335,6 +337,13 @@ async def search_packets(
         must_clauses.append({"match": {"dst_ip": dst_ip}})
     if protocol:
         must_clauses.append({"match": {"protocol": protocol}})
+    if start_time or end_time:
+        range_clause = {}
+        if start_time:
+            range_clause["gte"] = start_time
+        if end_time:
+            range_clause["lte"] = end_time
+        must_clauses.append({"range": {"timestamp": range_clause}})
         
     query = {"match_all": {}} if not must_clauses else {"bool": {"must": must_clauses}}
     

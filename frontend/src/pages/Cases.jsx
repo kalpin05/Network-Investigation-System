@@ -454,7 +454,7 @@ function NotesEditor({ initial, onSave }) {
 
 // ── Packet search component ──────────────────────────────────────────────────
 function PacketSearch() {
-  const [params, setParams] = useState({ src_ip: '', dst_ip: '', protocol: '', limit: 100 })
+  const [params, setParams] = useState({ src_ip: '', dst_ip: '', protocol: '', start_time: '', end_time: '', limit: 100 })
   const [results, setResults] = useState({ packets: [], total: 0 })
   const [loading, setLoading] = useState(false)
   const [streamModalOpen, setStreamModalOpen] = useState(false)
@@ -462,7 +462,14 @@ function PacketSearch() {
 
   const search = async () => {
     setLoading(true)
-    const filteredParams = Object.fromEntries(Object.entries(params).filter(([, v]) => v))
+    const searchParams = { ...params }
+    if (params.start_time) {
+      try { searchParams.start_time = new Date(params.start_time).toISOString() } catch (e) {}
+    }
+    if (params.end_time) {
+      try { searchParams.end_time = new Date(params.end_time).toISOString() } catch (e) {}
+    }
+    const filteredParams = Object.fromEntries(Object.entries(searchParams).filter(([, v]) => v))
     axios.get(`${API}/api/packets`, { params: filteredParams }).then(r => {
       setResults(r.data)
     }).catch(err => {
@@ -480,28 +487,55 @@ function PacketSearch() {
   return (
     <div className="bg-gray-900 border border-gray-800 rounded-xl p-5">
       <h2 className="text-lg font-semibold text-white mb-4">Packet Search</h2>
-      <div className="flex gap-3 mb-4">
-        {[
-          { key: 'src_ip', placeholder: 'Source IP' },
-          { key: 'dst_ip', placeholder: 'Destination IP' },
-          { key: 'protocol', placeholder: 'Protocol (TCP, DNS...)' },
-        ].map(({ key, placeholder }) => (
-          <input
-            key={key}
-            value={params[key]}
-            onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
-            placeholder={placeholder}
-            className="flex-1 bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
-              focus:outline-none focus:border-blue-500"
-            onKeyDown={e => e.key === 'Enter' && search()}
-          />
-        ))}
-        <button
-          onClick={search}
-          className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-medium transition-colors cursor-pointer"
-        >
-          {loading ? 'Searching...' : 'Search'}
-        </button>
+      <div className="space-y-3 mb-4">
+        {/* Row 1: IP & Protocol Filters */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          {[
+            { key: 'src_ip', placeholder: 'Source IP' },
+            { key: 'dst_ip', placeholder: 'Destination IP' },
+            { key: 'protocol', placeholder: 'Protocol (TCP, DNS...)' },
+          ].map(({ key, placeholder }) => (
+            <input
+              key={key}
+              value={params[key]}
+              onChange={e => setParams(p => ({ ...p, [key]: e.target.value }))}
+              placeholder={placeholder}
+              className="bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                focus:outline-none focus:border-blue-500"
+              onKeyDown={e => e.key === 'Enter' && search()}
+            />
+          ))}
+        </div>
+
+        {/* Row 2: Time Range Filters & Search button */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 items-center">
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium shrink-0">From:</span>
+            <input
+              type="datetime-local"
+              value={params.start_time}
+              onChange={e => setParams(p => ({ ...p, start_time: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                focus:outline-none focus:border-blue-500 font-mono"
+            />
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-gray-500 font-medium shrink-0">To:</span>
+            <input
+              type="datetime-local"
+              value={params.end_time}
+              onChange={e => setParams(p => ({ ...p, end_time: e.target.value }))}
+              className="w-full bg-gray-800 border border-gray-700 rounded-lg px-3 py-2 text-white text-sm
+                focus:outline-none focus:border-blue-500 font-mono"
+            />
+          </div>
+          <button
+            onClick={search}
+            className="bg-blue-600 hover:bg-blue-700 text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors cursor-pointer"
+          >
+            {loading ? 'Searching...' : 'Search'}
+          </button>
+        </div>
       </div>
 
       {results.total > 0 && (

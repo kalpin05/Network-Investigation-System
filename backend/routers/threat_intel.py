@@ -3,9 +3,19 @@ import ipaddress
 import random
 import time
 import requests
+import os
+import json
+import redis
 from fastapi import APIRouter, HTTPException
 
 router = APIRouter()
+
+REDIS_URL = os.getenv("REDIS_URL", "redis://redis:6379/0")
+try:
+    r_client = redis.from_url(REDIS_URL, decode_responses=True)
+except Exception as e:
+    print(f"[Redis] Connection to {REDIS_URL} failed: {e}")
+    r_client = None
 
 # In-memory cache for IP geolocations
 GEO_CACHE = {}
@@ -33,9 +43,19 @@ def get_deterministic_geoip(ip: str) -> dict:
     }
 
 def get_geoip(ip: str) -> dict:
-    """Fetch geo/ISP data from ip-api.com, caching results and handling rate limiting gracefully."""
+    """Fetch geo/ISP data from ip-api.com, caching results in Redis and handling rate limiting gracefully."""
     global api_cooldown_until
     
+    # Try loading from Redis first
+    if r_client:
+        try:
+            cached_data = r_client.get(f"geoip:{ip}")
+            if cached_data:
+                return json.loads(cached_data)
+        except Exception as err:
+            print(f"[Redis] Read failed for {ip}: {err}")
+
+    # Fall back to in-memory GEO_CACHE
     if ip in GEO_CACHE:
         return GEO_CACHE[ip]
         
@@ -58,7 +78,15 @@ def get_geoip(ip: str) -> dict:
                     "city": data.get("city", "Unknown"),
                     "isp": data.get("isp", "Unknown ISP")
                 }
-                # Evict cache if too large to prevent leaks
+                
+                # Save to Redis with 24h expiration
+                if r_client:
+                    try:
+                        r_client.setex(f"geoip:{ip}", 86400, json.dumps(geo_data))
+                    except Exception as err:
+                        print(f"[Redis] Write failed for {ip}: {err}")
+
+                # Local cache fallback
                 if len(GEO_CACHE) > 2000:
                     GEO_CACHE.clear()
                 GEO_CACHE[ip] = geo_data
