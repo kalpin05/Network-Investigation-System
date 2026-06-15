@@ -94,6 +94,13 @@ def run_all_signatures(packets: list[dict], session_id: str) -> list[dict]:
                     "description": f"[MITRE T1071.001 - Web Protocols] HTTP POST detected to suspicious TLD on host {http_host}."
                 })
 
+        # 5. Malicious TLS Fingerprint (JA3)
+        if protocol in ("TLS", "SSL"):
+            from .tls_fingerprint import check_ja3
+            ja3_alert = check_ja3(pkt)
+            if ja3_alert:
+                alerts.append(ja3_alert)
+
         # Track for aggregate logic
         timestamp_str = pkt.get("timestamp")
         try:

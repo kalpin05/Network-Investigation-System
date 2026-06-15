@@ -43,6 +43,11 @@ def parse_pcap(filepath: str, session_id: str, keylog_filepath: str = None) -> l
                 "dns_query": "",
                 "http_host": "",
                 "http_method": "",
+                "tls_version": "",
+                "tls_cipher_suites": "",
+                "tls_extensions": "",
+                "tls_elliptic_curves": "",
+                "tls_ec_point_formats": "",
             }
             if hasattr(pkt, 'transport_layer') and pkt.transport_layer:
                 tl = pkt[pkt.transport_layer]
@@ -60,6 +65,16 @@ def parse_pcap(filepath: str, session_id: str, keylog_filepath: str = None) -> l
                     doc["http_host"] = str(pkt.http.host)
                 if hasattr(pkt.http, 'request_method'):
                     doc["http_method"] = str(pkt.http.request_method)
+
+            if hasattr(pkt, 'tls'):
+                try:
+                    doc["tls_version"] = str(pkt.tls.record_version) if hasattr(pkt.tls, 'record_version') else ""
+                    doc["tls_cipher_suites"] = str(pkt.tls.handshake_ciphersuite) if hasattr(pkt.tls, 'handshake_ciphersuite') else ""
+                    doc["tls_extensions"] = str(pkt.tls.handshake_extension_type) if hasattr(pkt.tls, 'handshake_extension_type') else ""
+                    doc["tls_elliptic_curves"] = str(pkt.tls.handshake_elliptic_curve) if hasattr(pkt.tls, 'handshake_elliptic_curve') else ""
+                    doc["tls_ec_point_formats"] = str(pkt.tls.handshake_ec_point_format) if hasattr(pkt.tls, 'handshake_ec_point_format') else ""
+                except Exception:
+                    pass
 
             packets.append(doc)
         except Exception:
