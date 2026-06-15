@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { Activity, Clock, AlertTriangle, Shield, TrendingUp } from 'lucide-react'
+import { Activity, Clock, AlertTriangle, Shield, TrendingUp, RefreshCw } from 'lucide-react'
 import { api } from '../api/client'
 
 const API = window.location.protocol + '//' + window.location.hostname + ':8000'
