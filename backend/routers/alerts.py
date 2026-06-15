@@ -1,7 +1,10 @@
-from fastapi import APIRouter, Query, Depends
+from fastapi import APIRouter, Query, Depends, WebSocket, WebSocketDisconnect
 from db.postgres import get_pool
 from typing import Optional
 from routers.auth import check_role
+from aiokafka import AIOKafkaConsumer
+from config import KAFKA_BOOTSTRAP_SERVERS
+import json
 
 router = APIRouter()
 
@@ -52,4 +55,23 @@ async def dashboard_stats(
         "alerts": total_alerts,
         "critical": critical_alerts
     }
+
+@router.websocket("/ws/alerts")
+async def alert_stream(websocket: WebSocket):
+    """Streams new alerts in real-time to connected frontend clients."""
+    await websocket.accept()
+    consumer = AIOKafkaConsumer(
+        "live-alerts",
+        bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+        value_deserializer=lambda x: json.loads(x.decode('utf-8')),
+        auto_offset_reset="latest"
+    )
+    await consumer.start()
+    try:
+        async for msg in consumer:
+            await websocket.send_json(msg.value)
+    except WebSocketDisconnect:
+        pass
+    finally:
+        await consumer.stop()
 

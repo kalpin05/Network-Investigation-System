@@ -10,6 +10,7 @@ import Kibana from './pages/Kibana'
 import Settings from './pages/Settings'
 import Login from './pages/Login'
 import axios from 'axios'
+import AlertToast from './components/AlertToast'
 
 export default function App() {
   const [user, setUser] = useState(() => {
@@ -55,6 +56,7 @@ export default function App() {
             <Route path="/settings" element={<Settings />} />
           </Routes>
         </main>
+        <AlertToast />
       </div>
     </BrowserRouter>
   )

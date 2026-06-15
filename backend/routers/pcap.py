@@ -126,6 +126,45 @@ async def upload_pcap(
                 session_id, a["rule_name"], a["severity"], a["src_ip"], a["dst_ip"], a["description"]
             )
 
+        # Publish alerts to live-alerts topic in Kafka for real-time WebSocket push
+        if alerts:
+            from aiokafka import AIOKafkaProducer
+            from config import KAFKA_BOOTSTRAP_SERVERS
+            from datetime import datetime
+            import json
+            
+            producer = AIOKafkaProducer(
+                bootstrap_servers=KAFKA_BOOTSTRAP_SERVERS,
+                value_serializer=lambda v: json.dumps(v).encode('utf-8')
+            )
+            try:
+                await producer.start()
+                for a in alerts:
+                    mitre_id = ""
+                    if "MITRE " in a["description"]:
+                        try:
+                            parts = a["description"].split("MITRE ")
+                            if len(parts) > 1:
+                                mitre_id = parts[1].split(" ")[0].strip()
+                        except Exception:
+                            pass
+                    
+                    alert_payload = {
+                        "session_id": session_id,
+                        "rule_name": a["rule_name"],
+                        "severity": a["severity"],
+                        "src_ip": a["src_ip"],
+                        "dst_ip": a["dst_ip"],
+                        "description": a["description"],
+                        "mitre_id": mitre_id,
+                        "fired_at": datetime.utcnow().isoformat() + "Z"
+                    }
+                    await producer.send_and_wait("live-alerts", alert_payload)
+            except Exception as e:
+                print(f"[Kafka] Failed to publish alert: {e}")
+            finally:
+                await producer.stop()
+
         # Log to Chain of Custody
         await log_custody(
             session_id=session_id,
