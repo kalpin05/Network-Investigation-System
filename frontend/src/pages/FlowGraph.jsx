@@ -6,7 +6,7 @@ import ReactFlow, {
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import axios from 'axios'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
 
 const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
@@ -414,22 +414,43 @@ export default function FlowGraph() {
                   NO LINK NODES LOADED. UPLOAD A PCAP FIRST.
                 </div>
               ) : (
-                <ReactFlow
-                  nodes={nodes}
-                  edges={edges}
-                  onNodesChange={onNodesChange}
-                  onEdgesChange={onEdgesChange}
-                  onNodeClick={onNodeClick}
-                  fitView
-                >
-                  <Background color="#3b4b37" gap={20} size={1} />
-                  <Controls className="!bg-[#141414] !border-[#00ff41] !text-[#00ff41] [&_button]:!border-[#3b4b37] [&_button]:!bg-transparent hover:[&_button]:!bg-[#00ff41]/15" />
-                  <MiniMap
-                    nodeColor={n => n.style?.border?.includes('ff0040') ? '#ff0040' : '#00ff41'}
-                    maskColor="rgba(12,22,10,0.85)"
-                    className="!bg-[#141414] !border-[#00ff41]"
-                  />
-                </ReactFlow>
+                <>
+                  <ReactFlow
+                    nodes={nodes}
+                    edges={edges}
+                    onNodesChange={onNodesChange}
+                    onEdgesChange={onEdgesChange}
+                    onNodeClick={onNodeClick}
+                    fitView
+                  >
+                    <Background color="#3b4b37" gap={20} size={1} />
+                    <Controls className="!bg-[#141414] !border-[#00ff41] !text-[#00ff41] [&_button]:!border-[#3b4b37] [&_button]:!bg-transparent hover:[&_button]:!bg-[#00ff41]/15" />
+                    <MiniMap
+                      nodeColor={n => n.style?.border?.includes('ff0040') ? '#ff0040' : '#00ff41'}
+                      maskColor="rgba(12,22,10,0.85)"
+                      className="!bg-[#141414] !border-[#00ff41]"
+                    />
+                  </ReactFlow>
+
+                  {/* Custom Node Legend Block */}
+                  <div className="absolute bottom-4 left-4 bg-[#071106]/95 border border-[#00ff41] p-3 text-[10px] space-y-2 z-10 font-mono text-[#ebffe2] rounded-sm pointer-events-none shadow-[0_0_15px_rgba(0,255,65,0.15)]">
+                    <div className="font-bold border-b border-[#3b4b37] pb-1 uppercase tracking-wider text-[#00ff41]">[ Node Legend ]</div>
+                    <div className="flex flex-col gap-1.5">
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 bg-[#132c44] border border-[#00ff41]" />
+                        <span>INTERNAL NODE</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 bg-[#142c1b] border border-[#ffd393]" />
+                        <span>EXTERNAL NET</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="w-3 h-3 bg-[#5a1111] border border-[#ff0040]" />
+                        <span className="text-red-500 font-bold">SUSPICIOUS (ALARM)</span>
+                      </div>
+                    </div>
+                  </div>
+                </>
               )}
             </div>
           </div>
@@ -459,7 +480,16 @@ export default function FlowGraph() {
                           <stop offset="95%" stopColor="#00ff41" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
+                      <XAxis dataKey="time" hide />
                       <Area type="monotone" dataKey="packet_count" stroke="#00ff41" fill="url(#upGrad)" strokeWidth={1.5} dot={false} />
+                      {timelineData.alert_markers.map((m, i) => (
+                        <ReferenceLine
+                          key={i}
+                          x={m.time}
+                          stroke={m.severity === 'critical' ? '#ff0040' : '#ffd393'}
+                          strokeDasharray="3 3"
+                        />
+                      ))}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
@@ -482,7 +512,16 @@ export default function FlowGraph() {
                           <stop offset="95%" stopColor="#ffd393" stopOpacity={0}/>
                         </linearGradient>
                       </defs>
+                      <XAxis dataKey="time" hide />
                       <Area type="monotone" dataKey="total_bytes" stroke="#ffd393" fill="url(#downGrad)" strokeWidth={1.5} dot={false} />
+                      {timelineData.alert_markers.map((m, i) => (
+                        <ReferenceLine
+                          key={i}
+                          x={m.time}
+                          stroke={m.severity === 'critical' ? '#ff0040' : '#ffd393'}
+                          strokeDasharray="3 3"
+                        />
+                      ))}
                     </AreaChart>
                   </ResponsiveContainer>
                 </div>
