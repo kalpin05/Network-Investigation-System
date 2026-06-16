@@ -139,6 +139,7 @@ export default function Login({ onLogin }) {
       localStorage.setItem('username', r.data.username)
       onLogin(r.data)
     } catch (err) {
+      console.error("Authentication failed:", err)
       setError('Authentication Rejected. Verification Failed.')
     } finally {
       setLoading(false)
