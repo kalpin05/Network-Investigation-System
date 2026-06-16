@@ -1,12 +1,12 @@
 import { useEffect, useState, useCallback } from 'react'
-import { MapPin, Network, FolderOpen, Settings, Power, Sliders, Globe } from 'lucide-react'
+import { MapPin, FolderOpen, Power, Sliders, Globe } from 'lucide-react'
 import ReactFlow, {
   Background, Controls, MiniMap,
   useNodesState, useEdgesState
 } from 'reactflow'
 import 'reactflow/dist/style.css'
 import axios from 'axios'
-import { AreaChart, Area, XAxis, YAxis, Tooltip, ReferenceLine, ResponsiveContainer } from 'recharts'
+import { AreaChart, Area, XAxis, ReferenceLine, ResponsiveContainer } from 'recharts'
 
 const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
@@ -264,8 +264,7 @@ export default function FlowGraph() {
     return () => clearInterval(timer)
   }, [])
 
-  const loadData = () => {
-    setLoading(true)
+  useEffect(() => {
     axios.get(`${API}/api/graph`).then(r => {
       setNodes(layoutNodes(r.data.nodes))
       setEdges(buildEdges(r.data.edges))
@@ -274,11 +273,7 @@ export default function FlowGraph() {
     }).finally(() => setLoading(false))
 
     axios.get(`${API}/api/timeline`).then(r => setTimelineData(r.data)).catch(() => {})
-  }
-
-  useEffect(() => {
-    loadData()
-  }, [])
+  }, [setNodes, setEdges])
 
   const onNodeClick = useCallback((_, node) => {
     const ip = node.id
@@ -378,7 +373,7 @@ export default function FlowGraph() {
                   <div className="text-gray-500 text-center py-10 font-sans text-xs">
                     Select a node in the graph or lookup cache to load intelligence dossier.
                   </div>
-                  {nodes.slice(0, 3).map((n, i) => (
+                  {nodes.slice(0, 3).map(n => (
                     <div 
                       key={n.id} 
                       onClick={() => selectNodeFromTable(n.id)}
