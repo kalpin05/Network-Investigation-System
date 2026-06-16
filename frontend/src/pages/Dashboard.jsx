@@ -277,23 +277,11 @@ export default function Dashboard() {
           </div>
         </div>
 
-        {/* Center Column: Command Log */}
+        {/* Center Column: Live Traffic Tap */}
         <div className="terminal-window col-span-12 md:col-span-5 flex flex-col p-4">
-          <div className="text-xs font-bold terminal-header w-max">[COMMAND LOG]</div>
-          <div className="flex-grow min-h-[260px] bg-[#071106] border border-[#3b4b37] p-3 overflow-y-auto custom-scrollbar flex flex-col justify-end text-xs text-[#b9ccb2]">
-            <div className="space-y-2.5">
-              {logLines.map((line, idx) => {
-                const isAlert = line.startsWith('&gt; WARNING:');
-                return (
-                  <p 
-                    key={idx} 
-                    className={isAlert ? 'text-red-500 font-bold' : idx === logLines.length - 1 ? 'text-[#00ff41]' : ''}
-                    dangerouslySetInnerHTML={{ __html: isAlert ? line : `&gt; ${line}` }}
-                  />
-                );
-              })}
-              <span className="blink text-[#00ff41]">_</span>
-            </div>
+          <div className="text-xs font-bold terminal-header w-max">[LIVE TRAFFIC TAP]</div>
+          <div className="flex-grow min-h-[260px] bg-[#071106] border border-[#3b4b37] p-3 flex flex-col justify-between text-xs text-[#b9ccb2] overflow-hidden">
+            <LiveFeed />
           </div>
         </div>
 
@@ -414,6 +402,21 @@ export default function Dashboard() {
           onSubmit={handleUploadSubmit}
           uploading={uploading}
         />
+      )}
+
+      {/* Traffic analytics bar trackers */}
+      {stats.top_talkers && stats.top_talkers.length > 0 && (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+          <div className="terminal-window p-1">
+            <TopTalkers data={stats.top_talkers} />
+          </div>
+          <div className="terminal-window p-1">
+            <TopProtocols data={stats.top_protocols} />
+          </div>
+          <div className="terminal-window p-1">
+            <TopPorts data={stats.top_ports} />
+          </div>
+        </div>
       )}
 
       {/* Exchange Data Repository: Ingested sessions directory grid */}
@@ -639,5 +642,150 @@ function ThreatScoreBadge({ score }) {
     <span className={`px-2 py-0.5 rounded border text-[10px] font-bold leading-none ${color}`}>
       {score}/100
     </span>
+  )
+}
+
+// ── Live capture feed component ─────────────────────────────────────────────
+function LiveFeed() {
+  const [active, setActive] = useState(false)
+  const [packets, setPackets] = useState([])
+
+  useEffect(() => {
+    let ws = null
+    if (active) {
+      const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':8000/ws/capture'
+      ws = new WebSocket(wsUrl)
+      ws.onmessage = (e) => {
+        const pkt = JSON.parse(e.data)
+        setPackets(prev => [pkt, ...prev].slice(0, 15))
+      }
+      ws.onerror = (err) => {
+        console.error("WebSocket error", err)
+      }
+      ws.onclose = () => {
+        setActive(false)
+      }
+    }
+    return () => {
+      if (ws) ws.close()
+    }
+  }, [active])
+
+  return (
+    <div className="flex flex-col h-full justify-between">
+      <div className="flex items-center justify-between border-b border-[#3b4b37] pb-2 mb-3">
+        <span className="text-[10px] text-[#00ff41]/85 uppercase tracking-widest flex items-center gap-1.5">
+          <span className="relative flex h-2 w-2">
+            <span className={`absolute inline-flex h-full w-full rounded-full bg-[#00ff41] opacity-75 ${active ? 'animate-ping' : ''}`}></span>
+            <span className={`relative inline-flex rounded-full h-2 w-2 ${active ? 'bg-[#00ff41]' : 'bg-gray-600'}`}></span>
+          </span>
+          STATUS: {active ? 'TAP_ACTIVE' : 'TAP_HALTED'}
+        </span>
+        <button
+          onClick={() => setActive(!active)}
+          className="text-[10px] font-bold px-2 py-0.5 border border-[#00ff41] text-[#00ff41] bg-transparent hover:bg-[#00ff41]/10 transition-colors cursor-pointer rounded-sm"
+        >
+          {active ? '[ HALT ]' : '[ ENGAGE ]'}
+        </button>
+      </div>
+      <div className="flex-grow overflow-y-auto space-y-2 pr-1 custom-scrollbar text-xs text-[#b9ccb2]">
+        {packets.map((p, idx) => (
+          <div key={idx} className="flex justify-between border-b border-[#3b4b37]/20 pb-1 leading-normal hover:bg-[#00ff41]/5 px-1 rounded-sm transition-colors font-mono">
+            <span className="text-[#00ff41] font-bold truncate max-w-[100px]">{p.src_ip}</span>
+            <span className="text-gray-600">➔</span>
+            <span className="text-[#84967e] truncate max-w-[100px]">{p.dst_ip}</span>
+            <span className="text-yellow-500 font-bold text-[9px] px-1 bg-yellow-950/20 border border-yellow-700/20 rounded-sm">{p.protocol}</span>
+            <span className="text-gray-400 text-[9px]">{p.packet_length}B</span>
+          </div>
+        ))}
+        {packets.length === 0 && (
+          <div className="text-center py-20 text-[#84967e]/55 text-xs">
+            {active ? 'SCANNING FOR RAW INTERCEPTS...' : 'ENGAGE TAP TO COMMENCE PACKET SNIFFING'}
+          </div>
+        )}
+      </div>
+    </div>
+  )
+}
+
+// ── Traffic breakdown panels ────────────────────────────────────────────────
+function TopTalkers({ data }) {
+  if (!data || data.length === 0) return null
+  const max = data[0]?.bytes || 1
+
+  return (
+    <div className="p-4 flex flex-col justify-between h-full bg-[#071106] border border-[#3b4b37]/30">
+      <div className="font-bold text-xs text-[#00ff41] border-b border-[#3b4b37] pb-2 mb-3">[TOP_TRAFFIC_TALKERS]</div>
+      <div className="space-y-3">
+        {data.map((t, i) => (
+          <div key={t.ip}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-[#a4cc9c] font-bold">{t.ip}</span>
+              <span className="text-gray-500">{(t.bytes / 1024).toFixed(1)} KB</span>
+            </div>
+            <div className="h-2 bg-[#141414] border border-[#3b4b37]/80">
+              <div
+                className={`h-full ${i === 0 ? 'bg-red-600 shadow-[0_0_8px_rgba(220,38,38,0.5)]' : 'bg-[#00ff41] shadow-[0_0_8px_rgba(0,255,65,0.5)]'}`}
+                style={{ width: `${(t.bytes / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TopProtocols({ data }) {
+  if (!data || data.length === 0) return null
+  const max = data[0]?.count || 1
+
+  return (
+    <div className="p-4 flex flex-col justify-between h-full bg-[#071106] border border-[#3b4b37]/30">
+      <div className="font-bold text-xs text-[#00ff41] border-b border-[#3b4b37] pb-2 mb-3">[PROTOCOL_DISTRIBUTION]</div>
+      <div className="space-y-3">
+        {data.map((p, i) => (
+          <div key={p.protocol}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-[#a4cc9c] font-bold">{p.protocol}</span>
+              <span className="text-gray-500">{p.count} packets</span>
+            </div>
+            <div className="h-2 bg-[#141414] border border-[#3b4b37]/80">
+              <div
+                className={`h-full ${i === 0 ? 'bg-yellow-500 shadow-[0_0_8px_rgba(234,179,8,0.5)]' : 'bg-[#00ff41] shadow-[0_0_8px_rgba(0,255,65,0.5)]'}`}
+                style={{ width: `${(p.count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function TopPorts({ data }) {
+  if (!data || data.length === 0) return null
+  const max = data[0]?.count || 1
+
+  return (
+    <div className="p-4 flex flex-col justify-between h-full bg-[#071106] border border-[#3b4b37]/30">
+      <div className="font-bold text-xs text-[#00ff41] border-b border-[#3b4b37] pb-2 mb-3">[TOP_DESTINATION_PORTS]</div>
+      <div className="space-y-3">
+        {data.map((p, i) => (
+          <div key={p.port}>
+            <div className="flex justify-between text-xs mb-1">
+              <span className="text-[#a4cc9c] font-bold">Port {p.port}</span>
+              <span className="text-gray-500">{p.count} packets</span>
+            </div>
+            <div className="h-2 bg-[#141414] border border-[#3b4b37]/80">
+              <div
+                className={`h-full ${i === 0 ? 'bg-purple-600 shadow-[0_0_8px_rgba(147,51,234,0.5)]' : 'bg-[#00ff41] shadow-[0_0_8px_rgba(0,255,65,0.5)]'}`}
+                style={{ width: `${(p.count / max) * 100}%` }}
+              />
+            </div>
+          </div>
+        ))}
+      </div>
+    </div>
   )
 }
