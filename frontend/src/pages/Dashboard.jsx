@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { Upload, Download, Database, BarChart3, Clock, Terminal, X, ShieldAlert, Cpu, Radio, Globe, Sliders } from 'lucide-react'
+import { Upload, Download, Database, BarChart3, Terminal, Radio, Globe, Sliders } from 'lucide-react'
 import axios from 'axios'
 import PacketTable from '../components/PacketTable'
 import DPIPanel from '../components/DPIPanel'
@@ -283,12 +283,6 @@ export default function Dashboard() {
   const [activeTab, setActiveTab] = useState('packets')
   const [currentTime, setCurrentTime] = useState(new Date())
   const [alerts, setAlerts] = useState([])
-  const [logLines, setLogLines] = useState([
-    'INITIATING DIAGNOSTIC SEQUENCE...',
-    'SECURE_CONN_ESTABLISHED on PORT 443',
-    'SCANNING PACKETS: [||||||||||] 100%',
-    'AWAITING INPUT_'
-  ])
 
   const fetchCustodyLogs = () => {
     axios.get(`${API}/api/custody`)
@@ -304,7 +298,7 @@ export default function Dashboard() {
   useEffect(() => {
     axios.get(`${API}/api/sessions`).then(r => {
       setSessions(r.data)
-      if (r.data.length > 0 && !selectedSessionId) {
+      if (r.data.length > 0) {
         setSelectedSessionId(r.data[0].session_id)
       }
     })
@@ -312,19 +306,6 @@ export default function Dashboard() {
     axios.get(`${API}/api/alerts`).then(r => setAlerts(r.data)).catch(() => {})
     fetchCustodyLogs()
   }, [])
-
-  // Sync log lines with actual alerts
-  useEffect(() => {
-    if (alerts.length > 0) {
-      const alertLines = alerts.slice(0, 6).map(a => `&gt; WARNING: ${a.rule_name} detected from ${a.src_ip} [${a.severity.toUpperCase()}]`);
-      setLogLines([
-        'INITIATING DIAGNOSTIC SEQUENCE...',
-        'SECURE_CONN_ESTABLISHED on PORT 443',
-        ...alertLines,
-        'AWAITING INPUT_'
-      ]);
-    }
-  }, [alerts])
 
   const handleUploadSubmit = async (pcapFile, keylogFile) => {
     if (!pcapFile) return
