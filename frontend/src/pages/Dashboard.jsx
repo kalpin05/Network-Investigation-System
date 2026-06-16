@@ -9,73 +9,104 @@ const API = window.location.protocol + '//' + window.location.hostname + ':8000'
 
 const styleSheet = `
 body {
-    background-color: #0a0a0a;
-    color: #ebffe2;
+    background-color: #0c160a;
+    color: #dae6d2;
     position: relative;
 }
 
-/* Scanline Overlay */
-.scanlines-overlay {
-    content: " ";
-    display: block;
-    position: fixed;
-    top: 0; left: 0; bottom: 0; right: 0;
-    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.04), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.04));
-    z-index: 100;
-    background-size: 100% 2px, 3px 100%;
+.crt-scanlines {
+    background: linear-gradient(
+        to bottom,
+        rgba(255, 255, 255, 0),
+        rgba(255, 255, 255, 0) 50%,
+        rgba(0, 0, 0, 0.1) 50%,
+        rgba(0, 0, 0, 0.1)
+    );
+    background-size: 100% 4px;
     pointer-events: none;
+    z-index: 9999;
 }
 
-/* CRT Vignette/Distortion Effect */
-.crt-effect {
-    box-shadow: inset 0 0 100px rgba(0,0,0,0.955);
-    position: fixed;
-    top:0; left:0; right:0; bottom:0;
+.crt-overlay {
+    box-shadow: inset 0 0 100px rgba(0, 255, 65, 0.05);
     pointer-events: none;
-    z-index: 99;
+    z-index: 9998;
 }
 
 .terminal-window {
     border: 1px solid #00ff41;
-    background-color: #141414;
+    background-color: rgba(20, 30, 18, 0.85);
+    backdrop-filter: blur(4px);
     position: relative;
 }
 
-.terminal-window::before {
+.terminal-window::before, .terminal-window::after {
     content: '';
     position: absolute;
-    top: -1px; left: -1px;
-    width: 8px; height: 8px;
-    border-top: 2px solid #00ff41;
-    border-left: 2px solid #00ff41;
+    width: 8px;
+    height: 8px;
+    border: 2px solid #00ff41;
+    transition: all 0.2s ease;
 }
-.terminal-window::after {
-    content: '';
-    position: absolute;
-    bottom: -1px; right: -1px;
-    width: 8px; height: 8px;
-    border-bottom: 2px solid #00ff41;
-    border-right: 2px solid #00ff41;
-}
+.terminal-window::before { top: -1px; left: -1px; border-right: none; border-bottom: none; }
+.terminal-window::after { bottom: -1px; right: -1px; border-left: none; border-top: none; }
 
 .terminal-header {
-    background-color: #00ff41;
-    color: #0a0a0a;
+    border-bottom: 1px solid rgba(0, 255, 65, 0.3);
+    background: linear-gradient(90deg, rgba(0, 255, 65, 0.1) 0%, transparent 100%);
     padding: 2px 8px;
     display: inline-block;
     margin-bottom: 8px;
 }
 
-.blink { animation: blinker 1s linear infinite; }
-.blink-fast { animation: blinker 0.5s linear infinite; }
+.phosphor-glow {
+    text-shadow: 0 0 4px rgba(0, 255, 65, 0.5);
+    box-shadow: 0 0 8px rgba(0, 255, 65, 0.2);
+}
 
-@keyframes blinker {
+.phosphor-glow-text {
+    text-shadow: 0 0 8px rgba(0, 255, 65, 0.8);
+}
+
+.terminal-button {
+    border: 1px solid #00ff41;
+    background: transparent;
+    color: #ebffe2;
+    transition: all 0.15s ease-in-out;
+}
+
+.terminal-button:hover {
+    background-color: #00ff41;
+    color: #0c160a;
+    box-shadow: 0 0 12px rgba(0, 255, 65, 0.6);
+}
+
+.blinking-cursor::after {
+    content: '_';
+    animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+    0%, 100% { opacity: 1; }
     50% { opacity: 0; }
 }
 
-.glow-hover:hover {
-    box-shadow: 0 0 10px #00ff41;
-    background-color: rgba(0, 255, 65, 0.1);
+@keyframes scan {
+    0% { transform: translateY(-100%); }
+    100% { transform: translateY(100vh); }
+}
+
+.scanner-line {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 2px;
+    background: rgba(0, 255, 65, 0.4);
+    box-shadow: 0 0 10px rgba(0, 255, 65, 0.8);
+    animation: scan 8s linear infinite;
+    z-index: 10;
+    pointer-events: none;
 }
 
 .custom-scrollbar::-webkit-scrollbar {
@@ -83,13 +114,117 @@ body {
     height: 5px;
 }
 .custom-scrollbar::-webkit-scrollbar-track {
-    background: #141414;
+    background: #0c160a;
     border-left: 1px solid #3b4b37;
 }
 .custom-scrollbar::-webkit-scrollbar-thumb {
     background: #00ff41;
 }
+
+.table-row-hover:hover {
+    background-color: rgba(0, 255, 65, 0.05);
+}
 `;
+
+function ShaderBackground() {
+  useEffect(() => {
+    const canvas = document.getElementById('shader-canvas');
+    if (!canvas) return;
+
+    function syncSize() {
+      const w = canvas.clientWidth || 1280;
+      const h = canvas.clientHeight || 720;
+      if (canvas.width !== w || canvas.height !== h) {
+        canvas.width = w;
+        canvas.height = h;
+      }
+    }
+    syncSize();
+    window.addEventListener('resize', syncSize);
+
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return;
+    const vs = `attribute vec2 a_position;
+varying vec2 v_texCoord;
+void main() {
+  v_texCoord = a_position * 0.5 + 0.5;
+  gl_Position = vec4(a_position, 0.0, 1.0);
+}`;
+    const fs = `precision highp float;
+varying vec2 v_texCoord;
+uniform float u_time;
+uniform vec2 u_resolution;
+
+float hash(vec2 p) {
+    p = fract(p * vec2(123.34, 456.21));
+    p += dot(p, p + 45.32);
+    return fract(p.x * p.y);
+}
+
+void main() {
+    vec2 uv = (v_texCoord - 0.5) * u_resolution / min(u_resolution.x, u_resolution.y);
+    vec2 gridUv = v_texCoord * 40.0;
+    vec2 g = abs(fract(gridUv - 0.5) - 0.5) / fwidth(gridUv);
+    float grid = 1.0 - min(g.x, g.y);
+    vec3 color = vec3(0.0039, 0.0157, 0.0039);
+    color += grid * 0.02 * vec3(0.0, 1.0, 0.25);
+    
+    for(float i = 0.0; i < 15.0; i++) {
+        float h = hash(vec2(i, 123.45));
+        vec2 pos = vec2(sin(u_time * 0.2 * h + i), cos(u_time * 0.15 * h + i)) * 0.4;
+        float d = length(uv - pos);
+        float node = smoothstep(0.015, 0.01, d);
+        vec3 nodeCol = (h > 0.8) ? vec3(1.0, 0.0, 0.25) : ((h > 0.5) ? vec3(1.0, 0.69, 0.0) : vec3(0.0, 1.0, 0.25));
+        color += node * nodeCol * (1.2 + sin(u_time * 2.0 + i) * 0.5);
+    }
+    
+    float scanline = sin(v_texCoord.y * u_resolution.y * 0.8) * 0.03;
+    color -= scanline;
+    color *= 1.0 - length(v_texCoord - 0.5) * 0.7;
+    gl_FragColor = vec4(color, 1.0);
+}`;
+
+    function cs(type, src) {
+      const s = gl.createShader(type);
+      gl.shaderSource(s, src);
+      gl.compileShader(s);
+      return s;
+    }
+    const prog = gl.createProgram();
+    gl.attachShader(prog, cs(gl.VERTEX_SHADER, vs));
+    gl.attachShader(prog, cs(gl.FRAGMENT_SHADER, fs));
+    gl.linkProgram(prog);
+    gl.useProgram(prog);
+
+    const buf = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, buf);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([-1,-1, 1,-1, -1,1, 1,1]), gl.STATIC_DRAW);
+    const pos = gl.getAttribLocation(prog, 'a_position');
+    gl.enableVertexAttribArray(pos);
+    gl.vertexAttribPointer(pos, 2, gl.FLOAT, false, 0, 0);
+
+    const uTime = gl.getUniformLocation(prog, 'u_time');
+    const uRes = gl.getUniformLocation(prog, 'u_resolution');
+
+    let reqId;
+    function render(t) {
+      gl.viewport(0, 0, canvas.width, canvas.height);
+      if (uTime) gl.uniform1f(uTime, t * 0.001);
+      if (uRes) gl.uniform2f(uRes, canvas.width, canvas.height);
+      gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
+      reqId = requestAnimationFrame(render);
+    }
+    render(0);
+
+    return () => {
+      cancelAnimationFrame(reqId);
+      window.removeEventListener('resize', syncSize);
+    };
+  }, []);
+
+  return <canvas id="shader-canvas" className="absolute inset-0 w-full h-full z-0 opacity-30 pointer-events-none" style={{ display: 'block' }} />;
+}
+
 
 // ── Spinning Holographic Globe ───────────────────────────────────
 function HolographicGlobe() {
@@ -238,10 +373,12 @@ export default function Dashboard() {
   const integrityRatio = Math.max(100 - Math.round(((stats.alerts || 0) / Math.max(sessions.length * 5, 1)) * 30), 10)
 
   return (
-    <div className="space-y-6 pb-12 text-[#ebffe2] font-mono select-none relative">
+    <div className="min-h-screen bg-[#0c160a] text-[#dae6d2] font-mono flex flex-col relative overflow-hidden select-none pb-12 space-y-6">
       <style dangerouslySetInnerHTML={{ __html: styleSheet }} />
-      <div className="crt-effect" />
-      <div className="scanlines-overlay" />
+      <ShaderBackground />
+      <div className="crt-scanlines absolute inset-0 w-full h-full pointer-events-none" />
+      <div className="crt-overlay absolute inset-0 w-full h-full pointer-events-none" />
+      <div className="scanner-line pointer-events-none" />
 
       {/* Header Info Banner */}
       <header className="flex justify-between items-center bg-[#071106] border-b border-[#3b4b37] px-4 py-3 font-headline-sm uppercase">
@@ -294,10 +431,10 @@ export default function Dashboard() {
             <div>
               <div className="flex justify-between text-[10px] mb-1 uppercase tracking-wider">
                 <span>THREAT_LEVEL</span>
-                <span className="text-red-500">{threatRatio}%</span>
+                <span className="text-[#ff0040]">{threatRatio}%</span>
               </div>
               <div className="w-full h-3 bg-[#2d382a] border border-[#3b4b37]">
-                <div className="h-full bg-red-600 transition-all duration-1000" style={{ width: `${threatRatio}%` }} />
+                <div className="h-full bg-[#ff0040] transition-all duration-1000" style={{ width: `${threatRatio}%` }} />
               </div>
             </div>
 
@@ -305,10 +442,10 @@ export default function Dashboard() {
             <div>
               <div className="flex justify-between text-[10px] mb-1 uppercase tracking-wider">
                 <span>NETWORK_LOAD</span>
-                <span className="text-blue-400">{networkRatio}%</span>
+                <span className="text-[#00ff41]">{networkRatio}%</span>
               </div>
               <div className="w-full h-3 bg-[#2d382a] border border-[#3b4b37]">
-                <div className="h-full bg-blue-500 transition-all duration-1000" style={{ width: `${networkRatio}%` }} />
+                <div className="h-full bg-[#00ff41] transition-all duration-1000" style={{ width: `${networkRatio}%` }} />
               </div>
             </div>
 
@@ -542,10 +679,10 @@ function CustodyLogs({ logs }) {
                 <td className="px-4 py-2.5">
                   <span className={`px-2 py-0.5 rounded text-[10px] font-bold capitalize border
                     ${l.action === 'upload' 
-                      ? 'bg-emerald-950/40 text-emerald-300 border-emerald-700/30' : 
+                      ? 'bg-emerald-950/40 text-[#00ff41] border-emerald-700/30' : 
                       l.action.startsWith('export') 
-                        ? 'bg-purple-950/40 text-purple-300 border-purple-700/30' : 
-                        'bg-blue-950/40 text-blue-300 border-blue-700/30'}`}>
+                        ? 'bg-yellow-950/40 text-yellow-400 border-yellow-700/30' : 
+                        'bg-orange-950/40 text-orange-300 border-orange-700/30'}`}>
                     {l.action.replace('_', ' ')}
                   </span>
                 </td>

@@ -24,19 +24,19 @@ const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     return (
-      <div className="bg-slate-950/90 border border-cyan-500/40 rounded-xl p-3.5 shadow-[0_0_20px_rgba(0,240,255,0.25)] text-xs space-y-2 max-w-sm font-mono backdrop-blur-md">
-        <div className="text-cyan-400 font-bold border-b border-cyan-950 pb-1 flex justify-between">
+      <div className="bg-[#071106]/95 border border-[#00ff41]/40 rounded p-3.5 shadow-[0_0_20px_rgba(0,255,65,0.25)] text-xs space-y-2 max-w-sm font-mono backdrop-blur-md">
+        <div className="text-[#00ff41] font-bold border-b border-[#3b4b37] pb-1 flex justify-between">
           <span>[DIAGNOSTIC_DATAPOINT]</span>
           <span className="text-gray-500">FLOW_VAL</span>
         </div>
         <div className="text-gray-400 text-[10px]">
           TIME: {new Date(data.time).toLocaleString()}
         </div>
-        <div className="flex justify-between gap-6 border-b border-cyan-950/30 pb-1">
+        <div className="flex justify-between gap-6 border-b border-[#3b4b37]/30 pb-1">
           <span className="text-gray-400">Packets Intake:</span>
           <span className="text-white font-bold">{data.packet_count.toLocaleString()}</span>
         </div>
-        <div className="flex justify-between gap-6 border-b border-cyan-950/30 pb-1">
+        <div className="flex justify-between gap-6 border-b border-[#3b4b37]/30 pb-1">
           <span className="text-gray-400">Bandwidth Vol:</span>
           <span className="text-white font-bold">{(data.total_bytes / 1024).toFixed(2)} KB</span>
         </div>
@@ -121,12 +121,12 @@ export default function PacketTimeline({ sessionId }) {
   const peakBytes = rawTimeline.length > 0 ? Math.max(...rawTimeline.map(t => t.total_bytes)) : 0
 
   return (
-    <div className="p-5 flex flex-col justify-between h-full bg-gray-900/10">
+    <div className="p-5 flex flex-col justify-between h-full bg-[#0c160a]/10">
       {/* Title & Controls Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cyan-950 pb-3 mb-4 font-mono">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#3b4b37] pb-3 mb-4 font-mono">
         <div>
-          <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2">
-            <Activity size={16} className="text-cyan-400 animate-pulse" />
+          <h3 className="text-sm font-bold text-[#00ff41] flex items-center gap-2">
+            <Activity size={16} className="text-[#00ff41] animate-pulse" />
             [PACKET_TRAFFIC_TIMELINE]
           </h3>
           <p className="text-[10px] text-gray-500 mt-0.5">
@@ -136,23 +136,23 @@ export default function PacketTimeline({ sessionId }) {
 
         <div className="flex items-center gap-3">
           {/* Toggle Packets vs Bytes */}
-          <div className="flex bg-gray-950/60 p-1 border border-cyan-900/35 rounded-xl text-[10px] font-bold">
+          <div className="flex bg-[#071106]/60 p-1 border border-[#3b4b37]/35 rounded text-[10px] font-bold">
             <button
               onClick={() => setViewType('packets')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded transition-all cursor-pointer ${
                 viewType === 'packets' 
-                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' 
-                  : 'text-gray-500 hover:text-cyan-300'
+                  ? 'bg-[#00ff41]/10 text-[#00ff41] border border-[#00ff41]/30' 
+                  : 'text-gray-500 hover:text-[#00ff41]'
               }`}
             >
               PACKETS
             </button>
             <button
               onClick={() => setViewType('bytes')}
-              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+              className={`px-3 py-1.5 rounded transition-all cursor-pointer ${
                 viewType === 'bytes' 
-                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' 
-                  : 'text-gray-500 hover:text-cyan-300'
+                  ? 'bg-[#00ff41]/10 text-[#00ff41] border border-[#00ff41]/30' 
+                  : 'text-gray-500 hover:text-[#00ff41]'
               }`}
             >
               BYTES
@@ -160,15 +160,15 @@ export default function PacketTimeline({ sessionId }) {
           </div>
 
           {/* Time intervals selector */}
-          <div className="flex bg-gray-950/60 p-1 border border-cyan-900/35 rounded-xl text-[10px] font-bold">
+          <div className="flex bg-[#071106]/60 p-1 border border-[#3b4b37]/35 rounded text-[10px] font-bold">
             {['1m', '5m', '1h'].map(i => (
               <button
                 key={i}
                 onClick={() => setInterval(i)}
-                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                className={`px-2.5 py-1.5 rounded transition-all cursor-pointer ${
                   interval === i 
-                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' 
-                    : 'text-gray-500 hover:text-cyan-300'
+                    ? 'bg-[#00ff41]/10 text-[#00ff41] border border-[#00ff41]/30' 
+                    : 'text-gray-500 hover:text-[#00ff41]'
                 }`}
               >
                 {i.toUpperCase()}
@@ -179,32 +179,32 @@ export default function PacketTimeline({ sessionId }) {
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-cyan-950/10 border border-cyan-900/35 rounded-xl p-3.5 text-[10px] font-mono mb-4">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-[#071106]/10 border border-[#3b4b37]/35 rounded p-3.5 text-[10px] font-mono mb-4">
         <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Timeline Period</span>
-          <span className="text-cyan-400 font-bold flex items-center gap-1.5">
-            <Clock size={12} className="text-cyan-400" />
+          <span className="text-[#00ff41] font-bold flex items-center gap-1.5">
+            <Clock size={12} className="text-[#00ff41]" />
             Every {interval === '1m' ? '1 Minute' : interval === '5m' ? '5 Minutes' : '1 Hour'}
           </span>
         </div>
         <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Overlayed Alerts</span>
-          <span className={`font-bold flex items-center gap-1.5 ${totalAlertsInView > 0 ? 'text-red-400' : 'text-white'}`}>
+          <span className={`font-bold flex items-center gap-1.5 ${totalAlertsInView > 0 ? 'text-[#ff0040]' : 'text-white'}`}>
             <AlertTriangle size={12} className={totalAlertsInView > 0 ? 'animate-pulse' : ''} />
             {totalAlertsInView} Events
           </span>
         </div>
         <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Peak Packet Flow</span>
-          <span className="text-cyan-300 font-bold flex items-center gap-1.5">
-            <TrendingUp size={12} className="text-cyan-400" />
+          <span className="text-yellow-500 font-bold flex items-center gap-1.5">
+            <TrendingUp size={12} className="text-yellow-500" />
             {peakPackets.toLocaleString()} pkts
           </span>
         </div>
         <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Peak Bandwidth</span>
-          <span className="text-emerald-300 font-bold flex items-center gap-1.5">
-            <Layers size={12} className="text-emerald-400" />
+          <span className="text-[#00ff41] font-bold flex items-center gap-1.5">
+            <Layers size={12} className="text-[#00ff41]" />
             {(peakBytes / 1024).toFixed(1)} KB
           </span>
         </div>
@@ -213,29 +213,29 @@ export default function PacketTimeline({ sessionId }) {
       {/* The Recharts Area Chart */}
       <div className="h-64 w-full relative">
         {loading && alignedData.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-950/60 z-10 rounded-xl">
-            <RefreshCw size={24} className="animate-spin text-cyan-400" />
+          <div className="absolute inset-0 flex items-center justify-center bg-[#0c160a]/60 z-10 rounded">
+            <RefreshCw size={24} className="animate-spin text-[#00ff41]" />
           </div>
         ) : alignedData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={alignedData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={viewType === 'packets' ? '#00f0ff' : '#10b981'} stopOpacity={0.25}/>
-                  <stop offset="95%" stopColor={viewType === 'packets' ? '#00f0ff' : '#10b981'} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={viewType === 'packets' ? '#00ff41' : '#ffd393'} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={viewType === 'packets' ? '#00ff41' : '#ffd393'} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 240, 255, 0.05)" />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 255, 65, 0.05)" />
               <XAxis 
                 dataKey="formattedTime" 
-                stroke="rgba(6, 182, 212, 0.5)" 
+                stroke="rgba(0, 255, 65, 0.3)" 
                 fontSize={9}
                 fontFamily="monospace"
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis 
-                stroke="rgba(6, 182, 212, 0.5)" 
+                stroke="rgba(0, 255, 65, 0.3)" 
                 fontSize={9}
                 fontFamily="monospace"
                 tickLine={false}
@@ -246,19 +246,19 @@ export default function PacketTimeline({ sessionId }) {
               <Area 
                 type="monotone" 
                 dataKey={viewType === 'packets' ? 'packet_count' : 'total_bytes'} 
-                stroke={viewType === 'packets' ? '#00f0ff' : '#10b981'} 
+                stroke={viewType === 'packets' ? '#00ff41' : '#ffd393'} 
                 strokeWidth={2}
                 fillOpacity={1} 
                 fill="url(#colorValue)" 
                 dot={<CustomDot />}
-                activeDot={{ r: 5, fill: '#00f0ff', strokeWidth: 1.5, stroke: '#ffffff' }}
+                activeDot={{ r: 5, fill: '#00ff41', strokeWidth: 1.5, stroke: '#0c160a' }}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full w-full flex flex-col items-center justify-center border border-dashed border-cyan-900/35 rounded-xl bg-cyan-950/5 text-center p-6 space-y-2 font-mono">
-            <Shield size={32} className="text-cyan-800" />
-            <p className="text-xs font-bold text-cyan-400">[NO_TRAFFIC_LOGGED]</p>
+          <div className="h-full w-full flex flex-col items-center justify-center border border-dashed border-[#3b4b37] rounded bg-[#071106]/20 text-center p-6 space-y-2 font-mono">
+            <Shield size={32} className="text-[#3b4b37]" />
+            <p className="text-xs font-bold text-[#00ff41]">[NO_TRAFFIC_LOGGED]</p>
             <p className="text-[10px] text-gray-500 max-w-xs">
               No packet index telemetry matches the query timeline bounds in Elasticsearch index.
             </p>
