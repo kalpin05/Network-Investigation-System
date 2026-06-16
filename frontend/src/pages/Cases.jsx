@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink, Download, Loader2, Shield, Globe, Terminal, ShieldAlert, AlertCircle, Network, Sliders } from 'lucide-react'
+import { FolderOpen, AlertTriangle, ExternalLink, Download, Shield, Globe, Terminal, ShieldAlert, AlertCircle, Sliders, Network } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../api/client'
 import StreamModal from '../components/StreamModal'
@@ -70,12 +70,12 @@ export default function Cases() {
   const [pdfMsg, setPdfMsg] = useState('')
   const [custodyLogs, setCustodyLogs] = useState([])
 
+  const loadCases = () => axios.get(`${API}/api/cases`).then(r => setCases(r.data)).catch(err => console.error(err))
+
   useEffect(() => {
     loadCases()
     axios.get(`${API}/api/alerts?limit=50`).then(r => setAlerts(r.data)).catch(err => console.error(err))
   }, [])
-
-  const loadCases = () => axios.get(`${API}/api/cases`).then(r => setCases(r.data)).catch(err => console.error(err))
 
   const loadCustodyLogs = async (caseAlerts) => {
     if (!caseAlerts || caseAlerts.length === 0) {
@@ -371,11 +371,17 @@ export default function Cases() {
                     <span className="text-xs font-bold text-[#00ff41] uppercase tracking-wider">CASE_NOTES</span>
                   </div>
                   <NotesEditor
+                    key={caseDetail.case_id}
                     initial={caseDetail.notes}
                     onSave={notes => updateNotes(caseDetail.case_id, notes)}
                   />
                 </div>
 
+              </div>
+
+              {/* MITRE ATT&CK Chain Reconstruction */}
+              <div className="terminal-window p-4 shrink-0">
+                <AttackChain caseId={caseDetail.case_id} />
               </div>
 
               {/* Elasticsearch Raw Dump (Packet Search) */}
@@ -543,11 +549,6 @@ export default function Cases() {
 function NotesEditor({ initial, onSave }) {
   const [notes, setNotes] = useState(initial || '')
   const [saved, setSaved] = useState(true)
-
-  useEffect(() => {
-    setNotes(initial || '')
-    setSaved(true)
-  }, [initial])
 
   const handleSave = () => {
     onSave(notes)
