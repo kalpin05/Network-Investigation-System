@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
-import { Activity, Clock, AlertTriangle, Shield, TrendingUp, RefreshCw } from 'lucide-react'
+import { Activity, Clock, AlertTriangle, Shield, TrendingUp, RefreshCw, Layers } from 'lucide-react'
 import { api } from '../api/client'
 
 const API = window.location.protocol + '//' + window.location.hostname + ':8000'
@@ -13,7 +13,7 @@ const CustomDot = (props) => {
         {/* Pulsing ring */}
         <circle cx={cx} cy={cy} r={8} fill="#ef4444" opacity={0.4} className="animate-ping" />
         {/* Solid red indicator */}
-        <circle cx={cx} cy={cy} r={5.5} fill="#ef4444" stroke="#ffffff" strokeWidth={1.5} />
+        <circle cx={cx} cy={cy} r={5} fill="#ef4444" stroke="#ffffff" strokeWidth={1} />
       </g>
     )
   }
@@ -24,29 +24,33 @@ const CustomTooltip = ({ active, payload }) => {
   if (active && payload && payload.length) {
     const data = payload[0].payload
     return (
-      <div className="bg-gray-950 border border-gray-800 rounded-xl p-3.5 shadow-2xl text-xs space-y-2 max-w-sm">
-        <div className="text-gray-400 font-mono font-semibold">
-          {new Date(data.time).toLocaleString()}
+      <div className="bg-slate-950/90 border border-cyan-500/40 rounded-xl p-3.5 shadow-[0_0_20px_rgba(0,240,255,0.25)] text-xs space-y-2 max-w-sm font-mono backdrop-blur-md">
+        <div className="text-cyan-400 font-bold border-b border-cyan-950 pb-1 flex justify-between">
+          <span>[DIAGNOSTIC_DATAPOINT]</span>
+          <span className="text-gray-500">FLOW_VAL</span>
         </div>
-        <div className="flex justify-between gap-6 border-b border-gray-900 pb-1.5">
-          <span className="text-gray-400 font-medium">Packets Fired:</span>
-          <span className="text-white font-bold font-mono">{data.packet_count.toLocaleString()}</span>
+        <div className="text-gray-400 text-[10px]">
+          TIME: {new Date(data.time).toLocaleString()}
         </div>
-        <div className="flex justify-between gap-6 border-b border-gray-900 pb-1.5">
-          <span className="text-gray-400 font-medium">Bytes Transferred:</span>
-          <span className="text-white font-bold font-mono">{(data.total_bytes / 1024).toFixed(2)} KB</span>
+        <div className="flex justify-between gap-6 border-b border-cyan-950/30 pb-1">
+          <span className="text-gray-400">Packets Intake:</span>
+          <span className="text-white font-bold">{data.packet_count.toLocaleString()}</span>
+        </div>
+        <div className="flex justify-between gap-6 border-b border-cyan-950/30 pb-1">
+          <span className="text-gray-400">Bandwidth Vol:</span>
+          <span className="text-white font-bold">{(data.total_bytes / 1024).toFixed(2)} KB</span>
         </div>
         {data.hasAlert && (
-          <div className="pt-1.5 space-y-1.5">
-            <div className="text-red-400 font-bold flex items-center gap-1 text-[11px] uppercase tracking-wider">
-              <AlertTriangle size={12} /> Alerts Flagged ({data.alertCount})
+          <div className="pt-1 space-y-1">
+            <div className="text-red-400 font-bold flex items-center gap-1 text-[10px] uppercase tracking-wider">
+              <AlertTriangle size={11} className="animate-pulse" /> Alerts Logged ({data.alertCount})
             </div>
-            <div className="space-y-1 max-h-32 overflow-y-auto">
+            <div className="space-y-1 max-h-32 overflow-y-auto custom-scrollbar">
               {data.alerts.map((alert, idx) => (
-                <div key={idx} className="bg-red-950/40 border border-red-900/30 rounded-lg p-2 flex flex-col gap-0.5">
-                  <span className="text-red-300 font-bold text-[11px]">{alert.rule_name}</span>
-                  <span className="text-gray-500 text-[9px] uppercase tracking-wider font-semibold">
-                    Severity: {alert.severity}
+                <div key={idx} className="bg-red-950/40 border border-red-900/30 rounded p-1.5 flex flex-col">
+                  <span className="text-red-300 font-bold text-[10px]">{alert.rule_name}</span>
+                  <span className="text-gray-500 text-[8px] uppercase tracking-wider">
+                    SEV: {alert.severity}
                   </span>
                 </div>
               ))}
@@ -117,51 +121,57 @@ export default function PacketTimeline({ sessionId }) {
   const peakBytes = rawTimeline.length > 0 ? Math.max(...rawTimeline.map(t => t.total_bytes)) : 0
 
   return (
-    <div className="bg-gray-900 border border-gray-800 rounded-xl p-5 space-y-4">
+    <div className="p-5 flex flex-col justify-between h-full bg-gray-900/10">
       {/* Title & Controls Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-cyan-950 pb-3 mb-4 font-mono">
         <div>
-          <h3 className="text-sm font-semibold text-gray-300 flex items-center gap-2">
-            <Activity size={16} className="text-blue-400" />
-            Packet Traffic & Alert Timeline
+          <h3 className="text-sm font-bold text-cyan-400 flex items-center gap-2">
+            <Activity size={16} className="text-cyan-400 animate-pulse" />
+            [PACKET_TRAFFIC_TIMELINE]
           </h3>
-          <p className="text-xs text-gray-400 mt-0.5">
-            {sessionId ? `Timeline statistics for session ${sessionId.slice(0, 8)}` : 'Global packet intake volume and alert events timeline'}
+          <p className="text-[10px] text-gray-500 mt-0.5">
+            {sessionId ? `TIMELINE FOR EVIDENCE_ID: ${sessionId.slice(0, 8)}...` : 'GLOBAL PACKET FLOW AND INTEL ALERTS TIMELINE'}
           </p>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Toggle Packets vs Bytes */}
-          <div className="flex bg-gray-950 p-1 border border-gray-800 rounded-lg text-xs">
+          <div className="flex bg-gray-950/60 p-1 border border-cyan-900/35 rounded-xl text-[10px] font-bold">
             <button
               onClick={() => setViewType('packets')}
-              className={`px-3 py-1 rounded-md font-medium cursor-pointer transition-colors ${
-                viewType === 'packets' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                viewType === 'packets' 
+                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' 
+                  : 'text-gray-500 hover:text-cyan-300'
               }`}
             >
-              Packets
+              PACKETS
             </button>
             <button
               onClick={() => setViewType('bytes')}
-              className={`px-3 py-1 rounded-md font-medium cursor-pointer transition-colors ${
-                viewType === 'bytes' ? 'bg-blue-600 text-white' : 'text-gray-400 hover:text-white'
+              className={`px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
+                viewType === 'bytes' 
+                  ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' 
+                  : 'text-gray-500 hover:text-cyan-300'
               }`}
             >
-              Bytes
+              BYTES
             </button>
           </div>
 
           {/* Time intervals selector */}
-          <div className="flex bg-gray-950 p-1 border border-gray-800 rounded-lg text-xs">
+          <div className="flex bg-gray-950/60 p-1 border border-cyan-900/35 rounded-xl text-[10px] font-bold">
             {['1m', '5m', '1h'].map(i => (
               <button
                 key={i}
                 onClick={() => setInterval(i)}
-                className={`px-2.5 py-1 rounded-md font-medium cursor-pointer uppercase transition-colors ${
-                  interval === i ? 'bg-gray-850 text-white' : 'text-gray-400 hover:text-white'
+                className={`px-2.5 py-1.5 rounded-lg transition-all cursor-pointer ${
+                  interval === i 
+                    ? 'bg-cyan-500/10 text-cyan-300 border border-cyan-500/30' 
+                    : 'text-gray-500 hover:text-cyan-300'
                 }`}
               >
-                {i}
+                {i.toUpperCase()}
               </button>
             ))}
           </div>
@@ -169,32 +179,32 @@ export default function PacketTimeline({ sessionId }) {
       </div>
 
       {/* Summary Row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-gray-950/60 border border-gray-800/80 rounded-xl p-3.5 text-xs">
-        <div className="space-y-1">
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 bg-cyan-950/10 border border-cyan-900/35 rounded-xl p-3.5 text-[10px] font-mono mb-4">
+        <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Timeline Period</span>
-          <span className="text-white font-semibold flex items-center gap-1">
-            <Clock size={12} className="text-gray-400" />
+          <span className="text-cyan-400 font-bold flex items-center gap-1.5">
+            <Clock size={12} className="text-cyan-400" />
             Every {interval === '1m' ? '1 Minute' : interval === '5m' ? '5 Minutes' : '1 Hour'}
           </span>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Overlayed Alerts</span>
-          <span className={`font-semibold flex items-center gap-1 ${totalAlertsInView > 0 ? 'text-red-400' : 'text-white'}`}>
-            <AlertTriangle size={12} />
+          <span className={`font-bold flex items-center gap-1.5 ${totalAlertsInView > 0 ? 'text-red-400' : 'text-white'}`}>
+            <AlertTriangle size={12} className={totalAlertsInView > 0 ? 'animate-pulse' : ''} />
             {totalAlertsInView} Events
           </span>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Peak Packet Flow</span>
-          <span className="text-white font-semibold flex items-center gap-1">
-            <TrendingUp size={12} className="text-blue-400" />
+          <span className="text-cyan-300 font-bold flex items-center gap-1.5">
+            <TrendingUp size={12} className="text-cyan-400" />
             {peakPackets.toLocaleString()} pkts
           </span>
         </div>
-        <div className="space-y-1">
+        <div className="space-y-0.5">
           <span className="text-gray-500 block uppercase tracking-wider">Peak Bandwidth</span>
-          <span className="text-white font-semibold flex items-center gap-1">
-            <TrendingUp size={12} className="text-green-400" />
+          <span className="text-emerald-300 font-bold flex items-center gap-1.5">
+            <Layers size={12} className="text-emerald-400" />
             {(peakBytes / 1024).toFixed(1)} KB
           </span>
         </div>
@@ -203,29 +213,31 @@ export default function PacketTimeline({ sessionId }) {
       {/* The Recharts Area Chart */}
       <div className="h-64 w-full relative">
         {loading && alignedData.length === 0 ? (
-          <div className="absolute inset-0 flex items-center justify-center bg-gray-900/60 z-10">
-            <RefreshCw size={24} className="animate-spin text-blue-500" />
+          <div className="absolute inset-0 flex items-center justify-center bg-gray-950/60 z-10 rounded-xl">
+            <RefreshCw size={24} className="animate-spin text-cyan-400" />
           </div>
         ) : alignedData.length > 0 ? (
           <ResponsiveContainer width="100%" height="100%">
             <AreaChart data={alignedData} margin={{ top: 10, right: 15, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor={viewType === 'packets' ? '#3b82f6' : '#10b981'} stopOpacity={0.25}/>
-                  <stop offset="95%" stopColor={viewType === 'packets' ? '#3b82f6' : '#10b981'} stopOpacity={0}/>
+                  <stop offset="5%" stopColor={viewType === 'packets' ? '#00f0ff' : '#10b981'} stopOpacity={0.25}/>
+                  <stop offset="95%" stopColor={viewType === 'packets' ? '#00f0ff' : '#10b981'} stopOpacity={0}/>
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1f2937" opacity={0.5} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(0, 240, 255, 0.05)" />
               <XAxis 
                 dataKey="formattedTime" 
-                stroke="#9ca3af" 
-                fontSize={10}
+                stroke="rgba(6, 182, 212, 0.5)" 
+                fontSize={9}
+                fontFamily="monospace"
                 tickLine={false}
                 axisLine={false}
               />
               <YAxis 
-                stroke="#9ca3af" 
-                fontSize={10}
+                stroke="rgba(6, 182, 212, 0.5)" 
+                fontSize={9}
+                fontFamily="monospace"
                 tickLine={false}
                 axisLine={false}
                 tickFormatter={(v) => viewType === 'bytes' ? `${(v/1024).toFixed(0)}K` : v}
@@ -234,21 +246,21 @@ export default function PacketTimeline({ sessionId }) {
               <Area 
                 type="monotone" 
                 dataKey={viewType === 'packets' ? 'packet_count' : 'total_bytes'} 
-                stroke={viewType === 'packets' ? '#3b82f6' : '#10b981'} 
+                stroke={viewType === 'packets' ? '#00f0ff' : '#10b981'} 
                 strokeWidth={2}
                 fillOpacity={1} 
                 fill="url(#colorValue)" 
                 dot={<CustomDot />}
-                activeDot={{ r: 6 }}
+                activeDot={{ r: 5, fill: '#00f0ff', strokeWidth: 1.5, stroke: '#ffffff' }}
               />
             </AreaChart>
           </ResponsiveContainer>
         ) : (
-          <div className="h-full w-full flex flex-col items-center justify-center border border-dashed border-gray-800 rounded-xl bg-gray-950/20 text-center p-6 space-y-2">
-            <Shield size={32} className="text-gray-700" />
-            <p className="text-sm font-medium text-gray-400">No Traffic Logged</p>
-            <p className="text-xs text-gray-500 max-w-xs">
-              There is currently no packet metadata index for this timeframe in Elasticsearch.
+          <div className="h-full w-full flex flex-col items-center justify-center border border-dashed border-cyan-900/35 rounded-xl bg-cyan-950/5 text-center p-6 space-y-2 font-mono">
+            <Shield size={32} className="text-cyan-800" />
+            <p className="text-xs font-bold text-cyan-400">[NO_TRAFFIC_LOGGED]</p>
+            <p className="text-[10px] text-gray-500 max-w-xs">
+              No packet index telemetry matches the query timeline bounds in Elasticsearch index.
             </p>
           </div>
         )}
