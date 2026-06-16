@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink, Download, Loader2, Shield, Globe, Terminal, ShieldAlert, AlertCircle } from 'lucide-react'
+import { FolderOpen, Plus, ChevronRight, AlertTriangle, CheckCircle, Clock, FileText, FileSearch, Hash, Play, Pause, ExternalLink, Download, Loader2, Shield, Globe, Terminal, ShieldAlert, AlertCircle, Network, Sliders } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../api/client'
 import StreamModal from '../components/StreamModal'
