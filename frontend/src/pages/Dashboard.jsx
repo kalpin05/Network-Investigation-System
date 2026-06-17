@@ -296,13 +296,14 @@ export default function Dashboard() {
 
   useEffect(() => {
     api.get(`${API}/api/sessions`).then(r => {
-      setSessions(r.data)
-      if (r.data.length > 0) {
-        setSelectedSessionId(r.data[0].session_id)
+      const list = Array.isArray(r.data) ? r.data : []
+      setSessions(list)
+      if (list.length > 0) {
+        setSelectedSessionId(list[0].session_id)
       }
-    })
-    api.get(`${API}/api/dashboard`).then(r => setStats(r.data)).catch(() => {})
-    api.get(`${API}/api/alerts`).then(r => setAlerts(r.data)).catch(() => {})
+    }).catch(() => {})
+    api.get(`${API}/api/dashboard`).then(r => setStats(r.data || { sessions: 0, packets: 0, alerts: 0 })).catch(() => {})
+    api.get(`${API}/api/alerts`).then(r => setAlerts(Array.isArray(r.data) ? r.data : [])).catch(() => {})
     fetchCustodyLogs()
   }, [fetchCustodyLogs])
 

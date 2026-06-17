@@ -79,9 +79,10 @@ export default function Alerts() {
       try {
         const r = await api.get(`${API}/api/alerts`, { params })
         if (active) {
-          setAlerts(r.data)
-          if (r.data.length > 0) {
-            setSelectedAlert(r.data[0])
+          const list = Array.isArray(r.data) ? r.data : []
+          setAlerts(list)
+          if (list.length > 0) {
+            setSelectedAlert(list[0])
           }
         }
       } catch (e) {

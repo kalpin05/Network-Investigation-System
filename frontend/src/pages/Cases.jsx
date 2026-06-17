@@ -1,6 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
 import { FolderOpen, AlertTriangle, ExternalLink, Download, Shield, Globe, Terminal, ShieldAlert, AlertCircle, Sliders, Network } from 'lucide-react'
-import axios from 'axios'
 import { api } from '../api/client'
 import StreamModal from '../components/StreamModal'
 import { AttackChain } from '../components/AttackChain'
@@ -69,11 +68,11 @@ export default function Cases() {
   const [pdfMsg, setPdfMsg] = useState('')
   const [custodyLogs, setCustodyLogs] = useState([])
 
-  const loadCases = useCallback(() => axios.get(`${API}/api/cases`).then(r => setCases(r.data)).catch(err => console.error(err)), [])
+  const loadCases = useCallback(() => api.get(`${API}/api/cases`).then(r => setCases(Array.isArray(r.data) ? r.data : [])).catch(err => console.error(err)), [])
 
   useEffect(() => {
     loadCases()
-    axios.get(`${API}/api/alerts?limit=50`).then(r => setAlerts(r.data)).catch(err => console.error(err))
+    api.get(`${API}/api/alerts?limit=50`).then(r => setAlerts(Array.isArray(r.data) ? r.data : [])).catch(err => console.error(err))
   }, [loadCases])
 
   const loadCustodyLogs = async (caseAlerts) => {
@@ -81,7 +80,7 @@ export default function Cases() {
       setCustodyLogs([])
       return
     }
-    const sessionIds = [...new Set(caseAlerts.map(a => a.session_id).filter(Boolean))]
+    const sessionIds = [...new Set(caseAlerts.map(a => a?.session_id).filter(Boolean))]
     if (sessionIds.length === 0) {
       setCustodyLogs([])
       return
@@ -91,8 +90,8 @@ export default function Cases() {
         api.get('/api/custody', { params: { session_id: sid } })
       )
       const results = await Promise.all(promises)
-      const allLogs = results.flatMap(r => r.data)
-      const uniqueLogs = Array.from(new Map(allLogs.map(item => [item.log_id, item])).values())
+      const allLogs = results.flatMap(r => Array.isArray(r.data) ? r.data : [])
+      const uniqueLogs = Array.from(new Map(allLogs.map(item => [item?.log_id, item]).filter(entry => entry[0])).values())
       uniqueLogs.sort((a, b) => new Date(b.accessed_at) - new Date(a.accessed_at))
       setCustodyLogs(uniqueLogs)
     } catch (err) {
@@ -102,15 +101,15 @@ export default function Cases() {
 
   const openCase = (caseId) => {
     setSelected(caseId)
-    axios.get(`${API}/api/cases/${caseId}`).then(r => {
-      setCaseDetail(r.data)
-      loadCustodyLogs(r.data.alerts)
+    api.get(`${API}/api/cases/${caseId}`).then(r => {
+      setCaseDetail(r.data || {})
+      loadCustodyLogs(r.data?.alerts || [])
     }).catch(err => console.error(err))
   }
 
   const createCase = async () => {
     if (!newTitle.trim()) return
-    await axios.post(`${API}/api/cases`, {
+    await api.post(`${API}/api/cases`, {
       title: newTitle,
       notes: newNotes,
       alert_ids: selectedAlerts,
@@ -123,13 +122,13 @@ export default function Cases() {
   }
 
   const updateStatus = async (caseId, status) => {
-    await axios.patch(`${API}/api/cases/${caseId}`, { status }).catch(err => console.error(err))
+    await api.patch(`${API}/api/cases/${caseId}`, { status }).catch(err => console.error(err))
     openCase(caseId)
     loadCases()
   }
 
   const updateNotes = async (caseId, notes) => {
-    await axios.patch(`${API}/api/cases/${caseId}`, { notes }).catch(err => console.error(err))
+    await api.patch(`${API}/api/cases/${caseId}`, { notes }).catch(err => console.error(err))
   }
 
   const handleExportPDF = async (caseId) => {
@@ -595,8 +594,8 @@ function PacketSearch() {
   const search = async () => {
     setLoading(true)
     const filteredParams = Object.fromEntries(Object.entries(params).filter(([, v]) => v))
-    axios.get(`${API}/api/packets`, { params: filteredParams }).then(r => {
-      setResults(r.data)
+    api.get(`${API}/api/packets`, { params: filteredParams }).then(r => {
+      setResults(r.data && Array.isArray(r.data.packets) ? r.data : { packets: [], total: 0 })
     }).catch(err => {
       console.error(err)
     }).finally(() => {
