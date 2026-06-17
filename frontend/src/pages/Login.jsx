@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Terminal, X, AlertTriangle, User, Key, ShieldAlert, ChevronDown, LogIn, Cpu } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import { API_BASE_URL as API } from '../config'
 
 const styleSheet = `
@@ -132,7 +132,7 @@ export default function Login({ onLogin }) {
     setLoading(true)
     setError('')
     try {
-      const r = await axios.post(`${API}/api/auth/login`, creds)
+      const r = await api.post(`${API}/api/auth/login`, creds)
       localStorage.setItem('token', r.data.access_token)
       localStorage.setItem('role', r.data.role)
       localStorage.setItem('username', r.data.username)

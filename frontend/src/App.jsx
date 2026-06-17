@@ -10,7 +10,7 @@ import Kibana from './pages/Kibana'
 import Settings from './pages/Settings'
 import CustodyLog from './pages/CustodyLog'
 import Login from './pages/Login'
-import axios from 'axios'
+import { api } from './api/client'
 import AlertToast from './components/AlertToast'
 
 export default function App() {
@@ -27,7 +27,7 @@ export default function App() {
   }
 
   useEffect(() => {
-    const interceptor = axios.interceptors.response.use(
+    const interceptor = api.interceptors.response.use(
       response => response,
       error => {
         if (error.response && error.response.status === 401) {
@@ -36,7 +36,7 @@ export default function App() {
         return Promise.reject(error)
       }
     )
-    return () => axios.interceptors.response.eject(interceptor)
+    return () => api.interceptors.response.eject(interceptor)
   }, [])
 
   if (!user) return <Login onLogin={setUser} />

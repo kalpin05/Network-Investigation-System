@@ -5,7 +5,7 @@ import ReactFlow, {
   useNodesState, useEdgesState
 } from 'reactflow'
 import 'reactflow/dist/style.css'
-import axios from 'axios'
+import { api } from '../api/client'
 import { AreaChart, Area, XAxis, ReferenceLine, ResponsiveContainer } from 'recharts'
 import { API_BASE_URL as API } from '../config'
 
@@ -264,25 +264,25 @@ export default function FlowGraph() {
   }, [])
 
   useEffect(() => {
-    axios.get(`${API}/api/graph`).then(r => {
-      setNodes(layoutNodes(r.data.nodes))
-      setEdges(buildEdges(r.data.edges))
+    api.get(`${API}/api/graph`).then(r => {
+      setNodes(layoutNodes(Array.isArray(r.data?.nodes) ? r.data.nodes : []))
+      setEdges(buildEdges(Array.isArray(r.data?.edges) ? r.data.edges : []))
     }).catch(err => {
       console.error("[Graph] Load failed", err)
     }).finally(() => setLoading(false))
 
-    axios.get(`${API}/api/timeline`).then(r => setTimelineData(r.data)).catch(() => {})
+    api.get(`${API}/api/timeline`).then(r => setTimelineData(r.data || { timeline: [], alert_markers: [] })).catch(() => {})
   }, [setNodes, setEdges])
 
   const onNodeClick = useCallback((_, node) => {
     const ip = node.id
     setSelected(ip)
-    axios.get(`${API}/api/graph/node/${ip}`).then(r => setNodeDetail(r.data))
+    api.get(`${API}/api/graph/node/${ip}`).then(r => setNodeDetail(r.data || null))
   }, [])
 
   const selectNodeFromTable = (ip) => {
     setSelected(ip)
-    axios.get(`${API}/api/graph/node/${ip}`).then(r => setNodeDetail(r.data))
+    api.get(`${API}/api/graph/node/${ip}`).then(r => setNodeDetail(r.data || null))
   }
 
   return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Activity, ShieldAlert, Cpu } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import StreamModal from './StreamModal'
 import ThreatIntelModal from './ThreatIntelModal'
 import { API_BASE_URL as API } from '../config'
@@ -21,7 +21,7 @@ export default function PacketTable({ sessionId }) {
     Promise.resolve().then(() => {
       if (active) setLoading(true)
     })
-    axios.get(`${API}/api/sessions/${sessionId}/packets`)
+    api.get(`${API}/api/sessions/${sessionId}/packets`)
       .then(r => {
         if (!active) return
         if (r.data.error) {

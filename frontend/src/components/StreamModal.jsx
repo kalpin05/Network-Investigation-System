@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { X, Loader2, FileText, Download } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import { API_BASE_URL as API } from '../config'
 
 export default function StreamModal({ packet, sessionId, onClose }) {
@@ -22,7 +22,7 @@ export default function StreamModal({ packet, sessionId, onClose }) {
       dst_port: packet.dst_port
     }
 
-    axios.get(`${API}/api/sessions/${sessionId}/stream`, { params })
+    api.get(`${API}/api/sessions/${sessionId}/stream`, { params })
       .then(r => {
         if (!active) return
         if (r.data.error) {
