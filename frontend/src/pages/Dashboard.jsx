@@ -771,22 +771,42 @@ function LiveFeed() {
 
   useEffect(() => {
     let ws = null
-    if (active) {
+    let reconnectTimeout = null
+
+    const connect = () => {
+      if (!active) return
       const wsUrl = `${WS_BASE_URL}/ws/capture`
       ws = new WebSocket(wsUrl)
+      
       ws.onmessage = (e) => {
-        const pkt = JSON.parse(e.data)
-        setPackets(prev => [pkt, ...prev].slice(0, 15))
+        try {
+          const pkt = JSON.parse(e.data)
+          setPackets(prev => [pkt, ...prev].slice(0, 15))
+        } catch (err) {
+          console.error("Failed to parse capture payload:", err)
+        }
       }
+      
       ws.onerror = (err) => {
         console.error("WebSocket error", err)
+        ws.close()
       }
+      
       ws.onclose = () => {
-        setActive(false)
+        if (active) {
+          console.log("Capture WebSocket disconnected. Reconnecting in 3 seconds...")
+          reconnectTimeout = setTimeout(connect, 3000)
+        }
       }
     }
+
+    if (active) {
+      connect()
+    }
+
     return () => {
       if (ws) ws.close()
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
     }
   }, [active])
 
