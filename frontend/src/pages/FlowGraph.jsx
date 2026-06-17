@@ -7,8 +7,7 @@ import ReactFlow, {
 import 'reactflow/dist/style.css'
 import axios from 'axios'
 import { AreaChart, Area, XAxis, ReferenceLine, ResponsiveContainer } from 'recharts'
-
-const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+import { API_BASE_URL as API } from '../config'
 
 const styleSheet = `
 body {

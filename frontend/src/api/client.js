@@ -1,7 +1,7 @@
 import axios from 'axios'
+import { API_BASE_URL } from '../config'
 
-const apiBase = window.location.protocol + '//' + window.location.hostname + ':8000'
-axios.defaults.baseURL = apiBase
+axios.defaults.baseURL = API_BASE_URL
 
 axios.interceptors.request.use(config => {
   const token = localStorage.getItem('token')

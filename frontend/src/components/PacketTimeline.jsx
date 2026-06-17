@@ -2,8 +2,7 @@ import { useEffect, useState } from 'react'
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip } from 'recharts'
 import { Activity, Clock, AlertTriangle, Shield, TrendingUp, RefreshCw, Layers } from 'lucide-react'
 import { api } from '../api/client'
-
-const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+import { API_BASE_URL as API } from '../config'
 
 const CustomDot = (props) => {
   const { cx, cy, payload } = props

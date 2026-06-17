@@ -1,8 +1,7 @@
 import { useState, useEffect } from 'react'
 import { ShieldAlert, Globe, MapPin, AlertTriangle, CheckCircle, Activity, X } from 'lucide-react'
 import axios from 'axios'
-
-const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+import { API_BASE_URL as API } from '../config'
 
 export default function ThreatIntelModal({ ip, onClose }) {
   const [intel, setIntel] = useState(null)

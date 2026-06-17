@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertTriangle, X } from 'lucide-react'
+import { WS_BASE_URL } from '../config'
 
 const SEVERITY_COLOR = {
   critical: 'border-red-500 bg-red-950/80 text-white',
@@ -12,7 +13,7 @@ export default function AlertToast() {
   const [toasts, setToasts] = useState([])
 
   useEffect(() => {
-    const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':8000/ws/alerts'
+    const wsUrl = `${WS_BASE_URL}/ws/alerts`
     const ws = new WebSocket(wsUrl)
     ws.onmessage = (e) => {
       try {

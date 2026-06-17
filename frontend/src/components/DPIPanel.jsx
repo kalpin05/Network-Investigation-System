@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer } from 'recharts'
 import axios from 'axios'
+import { API_BASE_URL } from '../config'
 
 const COLORS = ['#3b82f6','#22c55e','#f59e0b','#ef4444','#a855f7','#06b6d4','#f97316','#84cc16']
 
@@ -14,8 +15,7 @@ export default function DPIPanel({ sessionId }) {
     Promise.resolve().then(() => {
       if (active) setLoading(true)
     })
-    const apiBase = window.location.protocol + '//' + window.location.hostname + ':8000'
-    axios.get(`${apiBase}/api/sessions/${sessionId}/dpi`)
+    axios.get(`${API_BASE_URL}/api/sessions/${sessionId}/dpi`)
       .then(r => {
         if (active) setDpi(r.data)
       })

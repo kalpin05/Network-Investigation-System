@@ -4,8 +4,7 @@ import axios from 'axios'
 import { api } from '../api/client'
 import StreamModal from '../components/StreamModal'
 import { AttackChain } from '../components/AttackChain'
-
-const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+import { API_BASE_URL as API } from '../config'
 
 const styleSheet = `
 .scanlines {

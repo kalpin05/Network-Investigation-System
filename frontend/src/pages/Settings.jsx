@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Terminal, Plus } from 'lucide-react'
-
-const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+import { API_BASE_URL as API } from '../config'
 
 export default function Settings() {
   const [isEnabled, setIsEnabled] = useState(false)

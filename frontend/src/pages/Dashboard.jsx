@@ -4,8 +4,7 @@ import axios from 'axios'
 import PacketTable from '../components/PacketTable'
 import DPIPanel from '../components/DPIPanel'
 import PacketTimeline from '../components/PacketTimeline'
-
-const API = window.location.protocol + '//' + window.location.hostname + ':8000'
+import { API_BASE_URL as API, WS_BASE_URL } from '../config'
 
 const styleSheet = `
 body {
@@ -771,7 +770,7 @@ function LiveFeed() {
   useEffect(() => {
     let ws = null
     if (active) {
-      const wsUrl = (window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':8000/ws/capture'
+      const wsUrl = `${WS_BASE_URL}/ws/capture`
       ws = new WebSocket(wsUrl)
       ws.onmessage = (e) => {
         const pkt = JSON.parse(e.data)
