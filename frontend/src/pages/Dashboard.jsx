@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Upload, Download, Database, BarChart3, Terminal, Radio, Globe, Sliders } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import PacketTable from '../components/PacketTable'
 import DPIPanel from '../components/DPIPanel'
 import PacketTimeline from '../components/PacketTimeline'
@@ -284,7 +284,7 @@ export default function Dashboard() {
   const [alerts, setAlerts] = useState([])
 
   const fetchCustodyLogs = useCallback(() => {
-    axios.get(`${API}/api/custody`)
+    api.get(`${API}/api/custody`)
       .then(r => setCustodyLogs(r.data))
       .catch(err => console.error("[Custody] Load failed", err))
   }, [])
@@ -295,14 +295,14 @@ export default function Dashboard() {
   }, [])
 
   useEffect(() => {
-    axios.get(`${API}/api/sessions`).then(r => {
+    api.get(`${API}/api/sessions`).then(r => {
       setSessions(r.data)
       if (r.data.length > 0) {
         setSelectedSessionId(r.data[0].session_id)
       }
     })
-    axios.get(`${API}/api/dashboard`).then(r => setStats(r.data)).catch(() => {})
-    axios.get(`${API}/api/alerts`).then(r => setAlerts(r.data)).catch(() => {})
+    api.get(`${API}/api/dashboard`).then(r => setStats(r.data)).catch(() => {})
+    api.get(`${API}/api/alerts`).then(r => setAlerts(r.data)).catch(() => {})
     fetchCustodyLogs()
   }, [fetchCustodyLogs])
 
@@ -315,8 +315,8 @@ export default function Dashboard() {
     
     try {
       setShowUploadModal(false)
-      const res = await axios.post(`${API}/api/pcap/upload`, form)
-      const r = await axios.get(`${API}/api/sessions`)
+      const res = await api.post(`${API}/api/pcap/upload`, form)
+      const r = await api.get(`${API}/api/sessions`)
       setSessions(r.data)
       if (res.data.session_id) {
         setSelectedSessionId(res.data.session_id)
@@ -331,7 +331,7 @@ export default function Dashboard() {
 
   const downloadEvidence = async (sessionId, filename) => {
     try {
-      const res = await axios.get(`${API}/api/evidence/${sessionId}`, {
+      const res = await api.get(`${API}/api/evidence/${sessionId}`, {
         responseType: 'blob'
       })
       const url = window.URL.createObjectURL(new Blob([res.data]))
@@ -341,6 +341,7 @@ export default function Dashboard() {
       document.body.appendChild(link)
       link.click()
       link.remove()
+      window.URL.revokeObjectURL(url)
       fetchCustodyLogs()
     } catch (err) {
       console.error("[Download] Evidence download failed", err)

@@ -282,6 +282,7 @@ export default function CustodyLog() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // Export full filtered logs to JSON
@@ -296,6 +297,7 @@ export default function CustodyLog() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // Export single session log to TXT
@@ -324,6 +326,7 @@ export default function CustodyLog() {
     document.body.appendChild(link)
     link.click()
     document.body.removeChild(link)
+    URL.revokeObjectURL(url)
   }
 
   // Filter logs locally

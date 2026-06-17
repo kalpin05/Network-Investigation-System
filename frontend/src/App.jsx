@@ -52,7 +52,16 @@ export default function App() {
             <Route path="/graph" element={<FlowGraph />} />
             <Route path="/alerts" element={<Alerts />} />
             <Route path="/cases" element={<Cases />} />
-            <Route path="/custody" element={<CustodyLog />} />
+            <Route 
+              path="/custody" 
+              element={
+                user?.role === 'admin' || user?.role === 'investigator' ? (
+                  <CustodyLog />
+                ) : (
+                  <Navigate to="/dashboard" replace />
+                )
+              } 
+            />
             <Route path="/kibana" element={<Kibana />} />
             <Route path="/ml" element={<MLTraining />} />
             <Route path="/settings" element={<Settings />} />

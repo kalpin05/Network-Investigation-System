@@ -4,3 +4,6 @@ const portSuffix = API_PORT ? `:${API_PORT}` : ''
 export const API_BASE_URL = import.meta.env.VITE_API_URL || `${window.location.protocol}//${window.location.hostname}${portSuffix}`
 
 export const WS_BASE_URL = import.meta.env.VITE_WS_URL || `${window.location.protocol === 'https:' ? 'wss:' : 'ws:'}//${window.location.hostname}${portSuffix}`
+
+export const KIBANA_URL = import.meta.env.VITE_KIBANA_URL || `${window.location.protocol}//${window.location.hostname}:5601`
+

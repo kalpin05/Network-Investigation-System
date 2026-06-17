@@ -68,7 +68,7 @@ export default function PacketTimeline({ sessionId }) {
   const [loading, setLoading] = useState(false)
   
   // Custom Controls
-  const [interval, setInterval] = useState('1m')
+  const [timelineInterval, setTimelineInterval] = useState('1m')
   const [viewType, setViewType] = useState('packets') // 'packets' or 'bytes'
 
   useEffect(() => {
@@ -78,7 +78,7 @@ export default function PacketTimeline({ sessionId }) {
         if (active) setLoading(true)
       })
       try {
-        const params = { interval }
+        const params = { interval: timelineInterval }
         if (sessionId) params.session_id = sessionId
         
         const response = await api.get(`${API}/api/timeline`, { params })
@@ -97,7 +97,7 @@ export default function PacketTimeline({ sessionId }) {
     return () => {
       active = false
     }
-  }, [sessionId, interval])
+  }, [sessionId, timelineInterval])
 
   // Align alert markers into chronological timeline buckets
   const alignedData = rawTimeline.map(bucket => {
@@ -105,8 +105,8 @@ export default function PacketTimeline({ sessionId }) {
     
     // Compute bucket window based on interval
     let intervalMs = 60000
-    if (interval === '5m') intervalMs = 300000
-    if (interval === '1h') intervalMs = 3600000
+    if (timelineInterval === '5m') intervalMs = 300000
+    if (timelineInterval === '1h') intervalMs = 3600000
 
     const alertsInBucket = alertMarkers.filter(alert => {
       const alertTime = new Date(alert.time).getTime()
@@ -171,9 +171,9 @@ export default function PacketTimeline({ sessionId }) {
             {['1m', '5m', '1h'].map(i => (
               <button
                 key={i}
-                onClick={() => setInterval(i)}
+                onClick={() => setTimelineInterval(i)}
                 className={`px-2.5 py-1.5 rounded transition-all cursor-pointer ${
-                  interval === i 
+                  timelineInterval === i 
                     ? 'bg-[#00ff41]/10 text-[#00ff41] border border-[#00ff41]/30' 
                     : 'text-gray-500 hover:text-[#00ff41]'
                 }`}
@@ -191,7 +191,7 @@ export default function PacketTimeline({ sessionId }) {
           <span className="text-gray-500 block uppercase tracking-wider">Timeline Period</span>
           <span className="text-[#00ff41] font-bold flex items-center gap-1.5">
             <Clock size={12} className="text-[#00ff41]" />
-            Every {interval === '1m' ? '1 Minute' : interval === '5m' ? '5 Minutes' : '1 Hour'}
+            Every {timelineInterval === '1m' ? '1 Minute' : timelineInterval === '5m' ? '5 Minutes' : '1 Hour'}
           </span>
         </div>
         <div className="space-y-0.5">

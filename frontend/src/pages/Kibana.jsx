@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ExternalLink, AlertTriangle, X, Globe, Activity, Info, ChevronDown } from 'lucide-react'
+import { KIBANA_URL } from '../config'
 
 const styleSheet = `
 .scanlines {
@@ -102,7 +103,7 @@ export default function Kibana() {
             <Info size={12} /> [ SETUP_INSTRUCTIONS ]
           </button>
           <a
-            href="http://localhost:5601"
+            href={KIBANA_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="border border-[#00e639] hover:bg-[#00e639]/10 text-[#00e639] py-1.5 px-4 cursor-pointer rounded-sm flex items-center gap-1.5 bg-transparent"
@@ -261,7 +262,7 @@ export default function Kibana() {
                 ) : (
                   // Live Kibana iframe
                   <iframe
-                    src="http://localhost:5601"
+                    src={KIBANA_URL}
                     title="Live Kibana Dashboard"
                     className="w-full h-full border-0 bg-white"
                   />

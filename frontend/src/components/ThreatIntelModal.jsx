@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { ShieldAlert, Globe, MapPin, AlertTriangle, CheckCircle, Activity, X } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import { API_BASE_URL as API } from '../config'
 
 export default function ThreatIntelModal({ ip, onClose }) {
@@ -13,7 +13,7 @@ export default function ThreatIntelModal({ ip, onClose }) {
     Promise.resolve().then(() => {
       if (active) setLoading(true)
     })
-    axios.get(`${API}/api/threat-intel/${ip}`)
+    api.get(`${API}/api/threat-intel/${ip}`)
       .then(res => {
         if (active) {
           setIntel(res.data)
@@ -71,24 +71,24 @@ export default function ThreatIntelModal({ ip, onClose }) {
               {/* Top Section: IP and Risk Score */}
               <div className="flex items-start justify-between">
                 <div>
-                  <h3 className="text-3xl font-mono font-bold text-white tracking-wider">{intel.ip}</h3>
+                  <h3 className="text-3xl font-mono font-bold text-white tracking-wider">{intel?.ip}</h3>
                   <div className="flex items-center gap-4 mt-2 text-sm text-gray-400">
-                    <span className="flex items-center gap-1"><MapPin size={14} /> {intel.geo.city}, {intel.geo.country}</span>
-                    <span className="flex items-center gap-1"><Globe size={14} /> {intel.geo.isp}</span>
+                    <span className="flex items-center gap-1"><MapPin size={14} /> {intel?.geo?.city || 'Unknown'}, {intel?.geo?.country || 'Unknown'}</span>
+                    <span className="flex items-center gap-1"><Globe size={14} /> {intel?.geo?.isp || 'Unknown'}</span>
                   </div>
                 </div>
                 
                 {/* Risk Badge */}
                 <div className={`flex flex-col items-center justify-center p-3 rounded-xl border min-w-[120px] shadow-lg
-                  ${intel.threat.threat_level === 'CRITICAL' ? 'bg-red-900/30 border-red-700 text-red-400' :
-                    intel.threat.threat_level === 'HIGH' ? 'bg-orange-900/30 border-orange-700 text-orange-400' :
-                    intel.threat.threat_level === 'MEDIUM' ? 'bg-yellow-900/30 border-yellow-700 text-yellow-400' :
+                  ${(intel?.threat?.threat_level || 'LOW') === 'CRITICAL' ? 'bg-red-900/30 border-red-700 text-red-400' :
+                    (intel?.threat?.threat_level || 'LOW') === 'HIGH' ? 'bg-orange-900/30 border-orange-700 text-orange-400' :
+                    (intel?.threat?.threat_level || 'LOW') === 'MEDIUM' ? 'bg-yellow-900/30 border-yellow-700 text-yellow-400' :
                     'bg-green-900/30 border-green-700 text-green-400'}`}
                 >
                   <span className="text-xs font-bold uppercase tracking-widest opacity-80 mb-1">Risk Score</span>
-                  <span className="text-3xl font-black">{intel.threat.risk_score}</span>
+                  <span className="text-3xl font-black">{intel?.threat?.risk_score ?? 0}</span>
                   <span className="text-[10px] font-bold uppercase mt-1 px-2 py-0.5 rounded bg-black/30">
-                    {intel.threat.threat_level}
+                    {intel?.threat?.threat_level || 'LOW'}
                   </span>
                 </div>
               </div>
@@ -98,7 +98,7 @@ export default function ThreatIntelModal({ ip, onClose }) {
                 <div className="space-y-3">
                   <h4 className="text-sm font-semibold text-gray-500 uppercase tracking-wider">Known Affiliations</h4>
                   <div className="flex flex-wrap gap-2">
-                    {intel.threat.tags.map(tag => (
+                    {(intel?.threat?.tags || []).map(tag => (
                       <span key={tag} className={`px-2.5 py-1 rounded text-xs font-bold shadow-sm
                         ${tag === 'Clean' || tag === 'Internal Network' ? 'bg-green-600 text-white' : 'bg-red-600 text-white'}`}>
                         {tag}
@@ -112,18 +112,18 @@ export default function ThreatIntelModal({ ip, onClose }) {
                   <div className="bg-gray-800 rounded-lg p-4 space-y-2 border border-gray-750">
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Reported Incidents:</span>
-                      <span className="font-bold text-white">{intel.threat.reported_incidents}</span>
+                      <span className="font-bold text-white">{intel?.threat?.reported_incidents ?? 0}</span>
                     </div>
                     <div className="flex justify-between items-center text-sm">
                       <span className="text-gray-400">Last Seen:</span>
-                      <span className="font-bold text-white">{intel.threat.last_seen}</span>
+                      <span className="font-bold text-white">{intel?.threat?.last_seen || 'N/A'}</span>
                     </div>
                   </div>
                 </div>
               </div>
 
               {/* Warning Banner */}
-              {intel.threat.risk_score > 60 && (
+              {(intel?.threat?.risk_score ?? 0) > 60 && (
                 <div className="mt-4 bg-red-950/50 border border-red-800 rounded-lg p-4 flex items-start gap-3">
                   <AlertTriangle className="text-red-500 shrink-0 mt-0.5" size={20} />
                   <div>
@@ -132,7 +132,7 @@ export default function ThreatIntelModal({ ip, onClose }) {
                   </div>
                 </div>
               )}
-              {intel.threat.risk_score <= 30 && (
+              {(intel?.threat?.risk_score ?? 0) <= 30 && (
                 <div className="mt-4 bg-green-950/30 border border-green-800/50 rounded-lg p-4 flex items-start gap-3">
                   <CheckCircle className="text-green-500 shrink-0 mt-0.5" size={20} />
                   <div>

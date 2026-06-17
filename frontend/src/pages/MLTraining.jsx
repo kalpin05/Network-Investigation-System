@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { AlertTriangle, RefreshCw, CheckCircle2, Sliders, Activity, Terminal, History } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import { API_BASE_URL as API } from '../config'
 
 export default function MLTraining() {
@@ -65,9 +65,7 @@ export default function MLTraining() {
     let active = true
     const init = async () => {
       try {
-        const res = await axios.get(`${API}/api/ml/status`, {
-          headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-        })
+        const res = await api.get(`${API}/api/ml/status`)
         if (active) {
           setConfig(res.data)
           if (res.data.contamination) {
@@ -100,9 +98,7 @@ export default function MLTraining() {
   // Async function to reload config after training
   const reloadStatus = async () => {
     try {
-      const res = await axios.get(`${API}/api/ml/status`, {
-        headers: { Authorization: `Bearer ${localStorage.getItem('token')}` }
-      })
+      const res = await api.get(`${API}/api/ml/status`)
       setConfig(res.data)
       addLog(`STATUS PARSED: ${res.data.status?.toUpperCase() || 'INACTIVE'} // CONT: ${res.data.contamination || 0.05}`)
     } catch (err) {
@@ -142,9 +138,8 @@ export default function MLTraining() {
     })
 
     try {
-      await axios.post(`${API}/api/ml/train`, 
-        { contamination: parseFloat(contamination) },
-        { headers: { Authorization: `Bearer ${localStorage.getItem('token')}` } }
+      await api.post(`${API}/api/ml/train`, 
+        { contamination: parseFloat(contamination) }
       )
 
       setTimeout(() => {
@@ -214,7 +209,10 @@ export default function MLTraining() {
     const link = document.createElement('a')
     link.href = url
     link.download = `isolation_forest_${selectedRun.id}.json`
+    document.body.appendChild(link)
     link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
     addLog(`EXPORTED SETTINGS TO LOCAL DISK: isolation_forest_${selectedRun.id}.json`)
   }
 

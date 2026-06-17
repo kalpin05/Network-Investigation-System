@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import axios from 'axios'
+import { api } from '../api/client'
 import { API_BASE_URL } from '../config'
 
 const STAGE_COLORS = {
@@ -15,8 +15,8 @@ export function AttackChain({ caseId }) {
 
   useEffect(() => {
     if (!caseId) return
-    axios.get(`${API_BASE_URL}/api/cases/${caseId}/attack-chain`)
-      .then(r => setChain(r.data.chain))
+    api.get(`${API_BASE_URL}/api/cases/${caseId}/attack-chain`)
+      .then(r => setChain(r.data.chain || []))
       .catch(err => console.error("Failed to load attack chain:", err))
   }, [caseId])
 

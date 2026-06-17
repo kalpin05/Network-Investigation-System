@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { AlertCircle, AlertTriangle, RefreshCw, ShieldAlert, Terminal, Sliders, Globe } from 'lucide-react'
-import axios from 'axios'
+import { api } from '../api/client'
 import { API_BASE_URL as API } from '../config'
 
 const styleSheet = `
@@ -77,7 +77,7 @@ export default function Alerts() {
       })
       const params = filter !== 'all' ? { severity: filter } : {}
       try {
-        const r = await axios.get(`${API}/api/alerts`, { params })
+        const r = await api.get(`${API}/api/alerts`, { params })
         if (active) {
           setAlerts(r.data)
           if (r.data.length > 0) {
@@ -136,8 +136,8 @@ echo "Containment complete."`
   const winScript = `# Isolate via Windows Firewall
 New-NetFirewallRule -DisplayName "Block Outbound ${ip}" -Direction Outbound -Action Block -RemoteAddress ${ip}
 New-NetFirewallRule -DisplayName "Block Inbound ${ip}" -Direction Inbound -Action Block -RemoteAddress ${ip}
-# Terminate Network Process
-Stop-Process -Name "svchost" -Force
+# Terminate Malicious Process Beaconing to IP (Query & stop active socket owner)
+Get-NetTCPConnection -RemoteAddress ${ip} | Select-Object -ExpandProperty OwningProcess | Stop-Process -Force
 Write-Host "Containment complete."`
 
   const handleCopyScript = (scriptText) => {

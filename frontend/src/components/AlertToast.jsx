@@ -13,20 +13,47 @@ export default function AlertToast() {
   const [toasts, setToasts] = useState([])
 
   useEffect(() => {
-    const wsUrl = `${WS_BASE_URL}/ws/alerts`
-    const ws = new WebSocket(wsUrl)
-    ws.onmessage = (e) => {
-      try {
-        const alert = JSON.parse(e.data)
-        const id = Date.now()
-        setToasts(prev => [...prev.slice(-4), { ...alert, id }]) // max 5 toasts
-        // Auto-dismiss after 6 seconds
-        setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
-      } catch (err) {
-        console.error("Failed to parse alert payload:", err)
+    let ws
+    let active = true
+    let reconnectTimeout
+
+    const connect = () => {
+      if (!active) return
+      const wsUrl = `${WS_BASE_URL}/ws/alerts`
+      ws = new WebSocket(wsUrl)
+
+      ws.onmessage = (e) => {
+        try {
+          const alert = JSON.parse(e.data)
+          const id = Date.now()
+          setToasts(prev => [...prev.slice(-4), { ...alert, id }]) // max 5 toasts
+          // Auto-dismiss after 6 seconds
+          setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 6000)
+        } catch (err) {
+          console.error("Failed to parse alert payload:", err)
+        }
+      }
+
+      ws.onclose = () => {
+        if (active) {
+          console.log("WebSocket disconnected. Reconnecting in 3 seconds...")
+          reconnectTimeout = setTimeout(connect, 3000)
+        }
+      }
+
+      ws.onerror = (err) => {
+        console.error("WebSocket error:", err)
+        ws.close()
       }
     }
-    return () => ws.close()
+
+    connect()
+
+    return () => {
+      active = false
+      if (ws) ws.close()
+      if (reconnectTimeout) clearTimeout(reconnectTimeout)
+    }
   }, [])
 
   return (
