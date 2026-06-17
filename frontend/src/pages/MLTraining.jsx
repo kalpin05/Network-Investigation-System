@@ -4,6 +4,7 @@ import axios from 'axios'
 import { API_BASE_URL as API } from '../config'
 
 export default function MLTraining() {
+  const isAdmin = localStorage.getItem('role') === 'admin'
   const [config, setConfig] = useState(null)
   const [contamination, setContamination] = useState(0.05)
   const [estimators, setEstimators] = useState(250)
@@ -110,6 +111,10 @@ export default function MLTraining() {
   }
 
   const handleTrain = async () => {
+    if (!isAdmin) {
+      setError('Failed to trigger training. Administrator privileges required.')
+      return
+    }
     setTraining(true)
     setSuccess(false)
     setError('')
@@ -182,6 +187,10 @@ export default function MLTraining() {
   }
 
   const handleRollback = () => {
+    if (!isAdmin) {
+      addLog('ROLLBACK DENIED: ADMINISTRATOR ACCESS REQUIRED.', 'error')
+      return
+    }
     const selectedRun = history.find(h => h.id === selectedHistoryId)
     if (selectedRun) {
       setContamination(selectedRun.contamination)
@@ -210,6 +219,10 @@ export default function MLTraining() {
   }
 
   const handleDeploy = () => {
+    if (!isAdmin) {
+      addLog('DEPLOYMENT DENIED: ADMINISTRATOR ACCESS REQUIRED.', 'error')
+      return
+    }
     addLog('INITIATING LIVE MONITORING DEPLOYMENT...')
     setTimeout(() => {
       addLog('DEPLOYING NEW PIPELINE WEIGHTS TO SECTOR-7G NODE...')
@@ -297,6 +310,13 @@ export default function MLTraining() {
         </div>
       </header>
 
+      {!isAdmin && (
+        <div className="mt-4 bg-yellow-950/40 border border-yellow-500 text-yellow-500 text-xs p-3 rounded font-mono flex items-start gap-2 animate-pulse">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0 text-yellow-500" />
+          <span>WARNING: READ-ONLY PRIVILEGES. ADMINISTRATOR CLEARANCE (L3) IS REQUIRED TO CONFIGURE OR RETRAIN AI MODELS.</span>
+        </div>
+      )}
+
       {loading ? (
         <div className="py-12 flex flex-col items-center justify-center gap-3">
           <RefreshCw size={24} className="animate-spin text-[#00ff41]" />
@@ -328,8 +348,8 @@ export default function MLTraining() {
                     step="0.01"
                     value={contamination}
                     onChange={(e) => setContamination(parseFloat(e.target.value))}
-                    disabled={training}
-                    className="w-full accent-[#00ff41] cursor-pointer"
+                    disabled={training || !isAdmin}
+                    className="w-full accent-[#00ff41] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <div className="flex justify-between text-[10px] text-[#b9ccb2] mt-0.5">
                     <span>0.01</span>
@@ -350,8 +370,8 @@ export default function MLTraining() {
                     step="10"
                     value={estimators}
                     onChange={(e) => setEstimators(parseInt(e.target.value))}
-                    disabled={training}
-                    className="w-full accent-[#00ff41] cursor-pointer"
+                    disabled={training || !isAdmin}
+                    className="w-full accent-[#00ff41] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <div className="flex justify-between text-[10px] text-[#b9ccb2] mt-0.5">
                     <span>100</span>
@@ -371,11 +391,13 @@ export default function MLTraining() {
                     {['auto', '256', '512'].map((option) => (
                       <button
                         key={option}
-                        onClick={() => !training && setMaxSamples(option)}
+                        onClick={() => !training && isAdmin && setMaxSamples(option)}
                         className={`py-1 text-[10px] font-bold border transition-all ${
                           maxSamples === option
                             ? 'bg-[#00ff41] text-[#0c160a] border-[#00ff41]'
-                            : 'border-[#00ff41] text-[#00ff41] bg-transparent hover:bg-[#00ff41]/10'
+                            : !isAdmin
+                              ? 'border-[#3b4b37] text-gray-500 bg-transparent cursor-not-allowed'
+                              : 'border-[#00ff41] text-[#00ff41] bg-transparent hover:bg-[#00ff41]/10'
                         }`}
                       >
                         {option.toUpperCase()}
@@ -397,8 +419,8 @@ export default function MLTraining() {
                     step="0.1"
                     value={anomalyThreshold}
                     onChange={(e) => setAnomalyThreshold(parseFloat(e.target.value))}
-                    disabled={training}
-                    className="w-full accent-[#ffb4ab] cursor-pointer"
+                    disabled={training || !isAdmin}
+                    className="w-full accent-[#ffb4ab] cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                   <div className="flex justify-between text-[10px] text-[#ffb4ab]/60 mt-0.5">
                     <span>-1.0</span>
@@ -621,7 +643,7 @@ export default function MLTraining() {
           <footer className="mt-8 flex flex-wrap gap-4 border-t border-[#3b4b37] pt-6 justify-end font-mono">
             <button
               onClick={handleRollback}
-              disabled={training}
+              disabled={training || !isAdmin}
               className="px-6 py-2 text-xs font-bold border border-[#3b4b37] text-[#dae6d2] hover:text-[#00ff41] hover:border-[#00ff41] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               ROLLBACK
@@ -634,19 +656,25 @@ export default function MLTraining() {
             </button>
             <button
               onClick={handleTrain}
-              disabled={training}
-              className={`px-6 py-2 text-xs font-bold border transition-all cursor-pointer ${
+              disabled={training || !isAdmin}
+              className={`px-6 py-2 text-xs font-bold border transition-all ${
                 training
                   ? 'bg-[#ffd393]/10 text-[#ffd393] border-[#ffd393] cursor-wait'
-                  : 'border-[#ffd393] text-[#ffd393] bg-transparent hover:bg-[#ffd393] hover:text-[#0c160a] hover:shadow-[0_0_12px_rgba(253,175,0,0.3)]'
+                  : !isAdmin
+                    ? 'border-gray-800 text-gray-500 bg-transparent cursor-not-allowed opacity-50'
+                    : 'border-[#ffd393] text-[#ffd393] bg-transparent hover:bg-[#ffd393] hover:text-[#0c160a] hover:shadow-[0_0_12px_rgba(253,175,0,0.3)] cursor-pointer'
               }`}
             >
               {training ? 'TRAINING...' : 'RETRAIN MODEL'}
             </button>
             <button
               onClick={handleDeploy}
-              disabled={training}
-              className="px-6 py-2 text-xs font-bold bg-[#00ff41] text-[#0c160a] border border-[#00ff41] hover:bg-[#72ff70] transition-all crt-glow hover:shadow-[0_0_15px_rgba(0,255,65,0.4)] disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
+              disabled={training || !isAdmin}
+              className={`px-6 py-2 text-xs font-bold transition-all border ${
+                !isAdmin
+                  ? 'border-gray-800 text-gray-500 bg-transparent cursor-not-allowed opacity-50'
+                  : 'bg-[#00ff41] text-[#0c160a] border-[#00ff41] hover:bg-[#72ff70] crt-glow hover:shadow-[0_0_15px_rgba(0,255,65,0.4)] cursor-pointer'
+              }`}
             >
               DEPLOY v2.3
             </button>

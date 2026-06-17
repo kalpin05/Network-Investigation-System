@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from 'react'
-import { Terminal, Plus } from 'lucide-react'
+import { Terminal, Plus, AlertTriangle } from 'lucide-react'
 import { API_BASE_URL as API } from '../config'
 
 export default function Settings() {
+  const isAdmin = localStorage.getItem('role') === 'admin'
   const [isEnabled, setIsEnabled] = useState(false)
   const [destinationType, setDestinationType] = useState('webhook')
   const [syslogIp, setSyslogIp] = useState('192.168.1.104')
@@ -105,6 +106,11 @@ export default function Settings() {
 
   const handleSave = async (e) => {
     if (e) e.preventDefault()
+    if (!isAdmin) {
+      setMessage('Failed to save configuration. Administrator privileges required.')
+      addLog('Save request denied: unauthorized clearance level.', 'error')
+      return
+    }
     setLoading(true)
     setMessage('')
     
@@ -139,6 +145,10 @@ export default function Settings() {
   }
 
   const handleCancel = () => {
+    if (!isAdmin) {
+      addLog('Cancel command denied: read-only access level.', 'error')
+      return
+    }
     reloadConfig()
     addLog('Cancel command parsed. Rolling back UI parameters.')
   }
@@ -294,16 +304,25 @@ export default function Settings() {
           SYSTEM SETTINGS // ALERT FORWARDING v1.9
           <span className="cursor ml-2" />
         </h1>
-        <div className={`font-mono text-xs border px-3 py-1 bg-black/40 cursor-pointer hover:bg-black/60 transition-all ${
+        <div className={`font-mono text-xs border px-3 py-1 bg-black/40 transition-all ${
+          isAdmin ? 'cursor-pointer hover:bg-black/60' : 'cursor-not-allowed opacity-75'
+        } ${
           isEnabled 
             ? 'text-[#00ff41] border-[#00ff41]' 
             : 'text-[#ffb4ab] border-[#ffb4ab]'
         }`}
-        onClick={() => setIsEnabled(!isEnabled)}
+        onClick={() => isAdmin && setIsEnabled(!isEnabled)}
         >
           FORWARDING: [{isEnabled ? 'ENABLED' : 'DISABLED'}]
         </div>
       </header>
+
+      {!isAdmin && (
+        <div className="mt-4 bg-yellow-950/40 border border-yellow-500 text-yellow-500 text-xs p-3 rounded font-mono flex items-start gap-2 animate-pulse">
+          <AlertTriangle size={14} className="mt-0.5 shrink-0 text-yellow-500" />
+          <span>WARNING: READ-ONLY PRIVILEGES. ADMINISTRATOR CLEARANCE (L3) IS REQUIRED TO CONFIGURE SIEM OR DAEMON ROUTING SETTINGS.</span>
+        </div>
+      )}
 
       {/* Alert Boxes */}
       {message && (
@@ -327,7 +346,7 @@ export default function Settings() {
             destinationType === 'syslog' ? 'opacity-100 ring-1 ring-[#00ff41]/30' : 'opacity-60 hover:opacity-80'
           }`}>
             <header className="border-b border-[#3b4b37] pb-3 mb-4 flex items-center justify-between cursor-pointer"
-                    onClick={() => setDestinationType('syslog')}
+                    onClick={() => isAdmin && setDestinationType('syslog')}
             >
               <h2 className="text-sm font-bold text-[#00ff41] crt-glow flex items-center gap-2">
                 <span>[SYS] SYSLOG_CONFIGURATION</span>
@@ -343,8 +362,8 @@ export default function Settings() {
                     type="text"
                     value={syslogIp}
                     onChange={(e) => setSyslogIp(e.target.value)}
-                    disabled={destinationType !== 'syslog'}
-                    className="cyber-input w-full py-1.5 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50"
+                    disabled={destinationType !== 'syslog' || !isAdmin}
+                    className="cyber-input w-full py-1.5 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50 disabled:cursor-not-allowed"
                   />
                 </div>
               </div>
@@ -357,7 +376,7 @@ export default function Settings() {
                       name="format"
                       checked={syslogFormat === 'CEF'}
                       onChange={() => setSyslogFormat('CEF')}
-                      disabled={destinationType !== 'syslog'}
+                      disabled={destinationType !== 'syslog' || !isAdmin}
                       className="sr-only peer"
                     />
                     <div className="w-4 h-4 border border-[#3b4b37] group-hover:border-[#00ff41] peer-checked:bg-[#00ff41] peer-checked:border-[#00ff41] transition-colors" />
@@ -371,7 +390,7 @@ export default function Settings() {
                       name="format"
                       checked={syslogFormat === 'RAW'}
                       onChange={() => setSyslogFormat('RAW')}
-                      disabled={destinationType !== 'syslog'}
+                      disabled={destinationType !== 'syslog' || !isAdmin}
                       className="sr-only peer"
                     />
                     <div className="w-4 h-4 border border-[#3b4b37] group-hover:border-[#00ff41] peer-checked:bg-[#00ff41] peer-checked:border-[#00ff41] transition-colors" />
@@ -389,7 +408,7 @@ export default function Settings() {
             destinationType === 'webhook' ? 'opacity-100 ring-1 ring-[#00ff41]/30' : 'opacity-60 hover:opacity-80'
           }`}>
             <header className="border-b border-[#3b4b37] pb-3 mb-4 flex items-center justify-between cursor-pointer"
-                    onClick={() => setDestinationType('webhook')}
+                    onClick={() => isAdmin && setDestinationType('webhook')}
             >
               <h2 className="text-sm font-bold text-[#00ff41] crt-glow flex items-center gap-2">
                 <span>[NET] WEBHOOK_ENDPOINTS</span>
@@ -397,8 +416,8 @@ export default function Settings() {
               </h2>
               <button
                 onClick={(e) => { e.stopPropagation(); handleAddTarget(); }}
-                disabled={destinationType !== 'webhook'}
-                className="text-xs border border-[#00ff41] text-[#00ff41] px-2.5 py-0.5 hover:bg-[#00ff41]/10 flex items-center gap-1 transition-all disabled:opacity-50 cursor-pointer"
+                disabled={destinationType !== 'webhook' || !isAdmin}
+                className="text-xs border border-[#00ff41] text-[#00ff41] px-2.5 py-0.5 hover:bg-[#00ff41]/10 flex items-center gap-1 transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
               >
                 <Plus size={10} /> ADD_TARGET
               </button>
@@ -416,8 +435,8 @@ export default function Settings() {
                           const val = e.target.value
                           setWebhookTargets(prev => prev.map(t => t.id === target.id ? { ...t, url: val } : t))
                         }}
-                        disabled={destinationType !== 'webhook'}
-                        className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50"
+                        disabled={destinationType !== 'webhook' || !isAdmin}
+                        className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50 disabled:cursor-not-allowed"
                       />
                     </div>
                   </div>
@@ -432,8 +451,8 @@ export default function Settings() {
                     </div>
                     <button
                       onClick={() => handleTestConn(target.id)}
-                      disabled={destinationType !== 'webhook'}
-                      className="px-2.5 py-1 border border-[#3b4b37] text-[#dae6d2] hover:text-[#00ff41] hover:border-[#00ff41] transition-all disabled:opacity-50 cursor-pointer"
+                      disabled={destinationType !== 'webhook' || !isAdmin}
+                      className="px-2.5 py-1 border border-[#3b4b37] text-[#dae6d2] hover:text-[#00ff41] hover:border-[#00ff41] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
                     >
                       {idx === 0 ? 'TEST_CONN' : 'RETRY'}
                     </button>
@@ -456,8 +475,10 @@ export default function Settings() {
               <div className="flex justify-between items-center border-b border-[#3b4b37]/30 pb-2">
                 <span className="text-[#b9ccb2]">DAEMON_STATE</span>
                 <span
-                  onClick={() => setIsEnabled(!isEnabled)}
-                  className={`font-bold cursor-pointer hover:opacity-80 transition-all ${
+                  onClick={() => isAdmin && setIsEnabled(!isEnabled)}
+                  className={`font-bold transition-all ${
+                    isAdmin ? 'cursor-pointer hover:opacity-80' : 'cursor-not-allowed opacity-75'
+                  } ${
                     isEnabled ? 'text-[#00ff41] crt-glow' : 'text-[#ffb4ab] crt-glow-error'
                   }`}
                 >
@@ -494,7 +515,8 @@ export default function Settings() {
                       type="number"
                       value={timeoutMs}
                       onChange={(e) => setTimeoutMs(parseInt(e.target.value))}
-                      className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41]"
+                      disabled={!isAdmin}
+                      className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -505,7 +527,8 @@ export default function Settings() {
                       type="number"
                       value={maxRetries}
                       onChange={(e) => setMaxRetries(parseInt(e.target.value))}
-                      className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41]"
+                      disabled={!isAdmin}
+                      className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -516,7 +539,8 @@ export default function Settings() {
                       type="number"
                       value={bufferSize}
                       onChange={(e) => setBufferSize(parseInt(e.target.value))}
-                      className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41]"
+                      disabled={!isAdmin}
+                      className="cyber-input w-full py-1 text-xs focus:ring-1 focus:ring-[#00ff41] disabled:opacity-50 disabled:cursor-not-allowed"
                     />
                   </div>
                 </div>
@@ -528,14 +552,15 @@ export default function Settings() {
           <div className="flex gap-4 mt-auto">
             <button
               onClick={handleCancel}
-              className="flex-1 py-2 text-xs font-bold border border-[#3b4b37] text-[#dae6d2] hover:bg-black/30 hover:border-[#00ff41] transition-all cursor-pointer"
+              disabled={!isAdmin}
+              className="flex-1 py-2 text-xs font-bold border border-[#3b4b37] text-[#dae6d2] hover:bg-black/30 hover:border-[#00ff41] transition-all disabled:opacity-50 disabled:cursor-not-allowed cursor-pointer"
             >
               CANCEL
             </button>
             <button
               onClick={handleSave}
-              disabled={loading}
-              className="flex-1 py-2 text-xs font-bold border border-[#00ff41] bg-[#141e12] text-[#00ff41] hover:bg-[#00ff41] hover:text-[#0c160a] transition-all crt-glow cursor-pointer disabled:opacity-50"
+              disabled={loading || !isAdmin}
+              className="flex-1 py-2 text-xs font-bold border border-[#00ff41] bg-[#141e12] text-[#00ff41] hover:bg-[#00ff41] hover:text-[#0c160a] transition-all crt-glow cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {loading ? 'SAVING...' : 'APPLY_CFG'}
             </button>
@@ -578,8 +603,9 @@ export default function Settings() {
               type="text"
               value={consoleInput}
               onChange={(e) => setConsoleInput(e.target.value)}
-              placeholder="Type /help for options..."
-              className="flex-1 bg-transparent border-none outline-none text-[#dae6d2] focus:ring-0 p-0 text-[10px] font-mono leading-none"
+              disabled={!isAdmin}
+              placeholder={isAdmin ? "Type /help for options..." : "READ-ONLY TERMINAL LOGS FEED"}
+              className="flex-1 bg-transparent border-none outline-none text-[#dae6d2] focus:ring-0 p-0 text-[10px] font-mono leading-none disabled:opacity-50"
             />
             <span className="cursor ml-1" />
           </form>
