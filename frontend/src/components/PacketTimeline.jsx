@@ -72,24 +72,32 @@ export default function PacketTimeline({ sessionId }) {
   const [interval, setInterval] = useState('1m')
   const [viewType, setViewType] = useState('packets') // 'packets' or 'bytes'
 
-  const fetchTimeline = async () => {
-    setLoading(true)
-    try {
-      const params = { interval }
-      if (sessionId) params.session_id = sessionId
-      
-      const response = await api.get(`${API}/api/timeline`, { params })
-      setRawTimeline(response.data.timeline || [])
-      setAlertMarkers(response.data.alert_markers || [])
-    } catch (err) {
-      console.error('Failed to load timeline data', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
   useEffect(() => {
+    let active = true
+    const fetchTimeline = async () => {
+      Promise.resolve().then(() => {
+        if (active) setLoading(true)
+      })
+      try {
+        const params = { interval }
+        if (sessionId) params.session_id = sessionId
+        
+        const response = await api.get(`${API}/api/timeline`, { params })
+        if (active) {
+          setRawTimeline(response.data.timeline || [])
+          setAlertMarkers(response.data.alert_markers || [])
+        }
+      } catch (err) {
+        console.error('Failed to load timeline data', err)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
     fetchTimeline()
+    return () => {
+      active = false
+    }
   }, [sessionId, interval])
 
   // Align alert markers into chronological timeline buckets

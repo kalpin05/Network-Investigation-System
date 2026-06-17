@@ -10,12 +10,22 @@ export default function DPIPanel({ sessionId }) {
 
   useEffect(() => {
     if (!sessionId) return
-    setLoading(true)
+    let active = true
+    Promise.resolve().then(() => {
+      if (active) setLoading(true)
+    })
     const apiBase = window.location.protocol + '//' + window.location.hostname + ':8000'
     axios.get(`${apiBase}/api/sessions/${sessionId}/dpi`)
-      .then(r => setDpi(r.data))
+      .then(r => {
+        if (active) setDpi(r.data)
+      })
       .catch(err => console.error("Failed to load DPI summary:", err))
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [sessionId])
 
   if (!sessionId) {

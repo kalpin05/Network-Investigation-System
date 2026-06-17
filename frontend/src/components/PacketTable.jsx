@@ -18,9 +18,13 @@ export default function PacketTable({ sessionId }) {
 
   useEffect(() => {
     if (!sessionId) return
-    setLoading(true)
+    let active = true
+    Promise.resolve().then(() => {
+      if (active) setLoading(true)
+    })
     axios.get(`${API}/api/sessions/${sessionId}/packets`)
       .then(r => {
+        if (!active) return
         if (r.data.error) {
           setError(r.data.error)
         } else {
@@ -29,11 +33,14 @@ export default function PacketTable({ sessionId }) {
         }
       })
       .catch(err => {
-        setError(err.message)
+        if (active) setError(err.message)
       })
       .finally(() => {
-        setLoading(false)
+        if (active) setLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [sessionId])
 
   if (!sessionId) {

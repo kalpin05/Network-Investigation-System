@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react'
-import { AlertCircle, AlertTriangle, Info, RefreshCw, ShieldAlert, X, Copy, Check, Terminal, Sliders, Globe } from 'lucide-react'
+import { AlertCircle, AlertTriangle, RefreshCw, ShieldAlert, Terminal, Sliders, Globe } from 'lucide-react'
 import axios from 'axios'
 
 const API = window.location.protocol + '//' + window.location.hostname + ':8000'
@@ -68,25 +68,35 @@ export default function Alerts() {
   const [copied, setCopied] = useState(false)
   const [containmentSuccess, setContainmentSuccess] = useState(false)
 
-  const load = async () => {
-    setLoading(true)
-    const params = filter !== 'all' ? { severity: filter } : {}
-    try {
-      const r = await axios.get(`${API}/api/alerts`, { params })
-      setAlerts(r.data)
-      if (r.data.length > 0) {
-        setSelectedAlert(r.data[0])
-      }
-    } catch (e) {
-      console.error(e)
-    } finally {
-      setLoading(false)
-    }
-  }
+  const [syncTrigger, setSyncTrigger] = useState(0)
 
   useEffect(() => {
+    let active = true
+    const load = async () => {
+      Promise.resolve().then(() => {
+        if (active) setLoading(true)
+      })
+      const params = filter !== 'all' ? { severity: filter } : {}
+      try {
+        const r = await axios.get(`${API}/api/alerts`, { params })
+        if (active) {
+          setAlerts(r.data)
+          if (r.data.length > 0) {
+            setSelectedAlert(r.data[0])
+          }
+        }
+      } catch (e) {
+        console.error(e)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+
     load()
-  }, [filter])
+    return () => {
+      active = false
+    }
+  }, [filter, syncTrigger])
 
   // Client-side filtering logic to make category and time filters fully interactive
   const filteredAlerts = alerts.filter(a => {
@@ -227,7 +237,7 @@ Write-Host "Containment complete."`
 
             {/* Refresh Button */}
             <button 
-              onClick={load} 
+              onClick={() => setSyncTrigger(p => p + 1)} 
               disabled={loading}
               className="ml-auto bg-transparent border border-[#00ff41] hover:bg-[#00ff41]/10 text-[#00ff41] py-1 px-3 text-xs uppercase tracking-wider cursor-pointer font-bold rounded-sm flex items-center gap-1.5 transition-all"
             >

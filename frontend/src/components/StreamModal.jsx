@@ -11,7 +11,10 @@ export default function StreamModal({ packet, sessionId, onClose }) {
 
   useEffect(() => {
     if (!packet || !sessionId) return
-    setLoading(true)
+    let active = true
+    Promise.resolve().then(() => {
+      if (active) setLoading(true)
+    })
     
     const params = {
       src_ip: packet.src_ip,
@@ -22,6 +25,7 @@ export default function StreamModal({ packet, sessionId, onClose }) {
 
     axios.get(`${API}/api/sessions/${sessionId}/stream`, { params })
       .then(r => {
+        if (!active) return
         if (r.data.error) {
           setError(r.data.error)
         } else {
@@ -29,11 +33,14 @@ export default function StreamModal({ packet, sessionId, onClose }) {
         }
       })
       .catch(err => {
-        setError(err.message)
+        if (active) setError(err.message)
       })
       .finally(() => {
-        setLoading(false)
+        if (active) setLoading(false)
       })
+    return () => {
+      active = false
+    }
   }, [packet, sessionId])
 
   // Colorization simple heuristic: 

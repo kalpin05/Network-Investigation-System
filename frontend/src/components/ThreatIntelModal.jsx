@@ -10,17 +10,27 @@ export default function ThreatIntelModal({ ip, onClose }) {
   const [error, setError] = useState(null)
 
   useEffect(() => {
-    setLoading(true)
+    let active = true
+    Promise.resolve().then(() => {
+      if (active) setLoading(true)
+    })
     axios.get(`${API}/api/threat-intel/${ip}`)
       .then(res => {
-        setIntel(res.data)
-        setError(null)
+        if (active) {
+          setIntel(res.data)
+          setError(null)
+        }
       })
       .catch(err => {
         console.error("Threat intel failed", err)
-        setError("Failed to fetch intelligence dossier.")
+        if (active) setError("Failed to fetch intelligence dossier.")
       })
-      .finally(() => setLoading(false))
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
   }, [ip])
 
   return (
