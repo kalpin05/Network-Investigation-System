@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { FolderOpen, AlertTriangle, ExternalLink, Download, Shield, Globe, Terminal, ShieldAlert, AlertCircle, Sliders, Network } from 'lucide-react'
 import axios from 'axios'
 import { api } from '../api/client'
@@ -70,12 +70,12 @@ export default function Cases() {
   const [pdfMsg, setPdfMsg] = useState('')
   const [custodyLogs, setCustodyLogs] = useState([])
 
-  const loadCases = () => axios.get(`${API}/api/cases`).then(r => setCases(r.data)).catch(err => console.error(err))
+  const loadCases = useCallback(() => axios.get(`${API}/api/cases`).then(r => setCases(r.data)).catch(err => console.error(err)), [])
 
   useEffect(() => {
     loadCases()
     axios.get(`${API}/api/alerts?limit=50`).then(r => setAlerts(r.data)).catch(err => console.error(err))
-  }, [])
+  }, [loadCases])
 
   const loadCustodyLogs = async (caseAlerts) => {
     if (!caseAlerts || caseAlerts.length === 0) {

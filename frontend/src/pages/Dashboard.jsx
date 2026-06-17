@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Upload, Download, Database, BarChart3, Terminal, Radio, Globe, Sliders } from 'lucide-react'
 import axios from 'axios'
 import PacketTable from '../components/PacketTable'
@@ -284,11 +284,11 @@ export default function Dashboard() {
   const [currentTime, setCurrentTime] = useState(new Date())
   const [alerts, setAlerts] = useState([])
 
-  const fetchCustodyLogs = () => {
+  const fetchCustodyLogs = useCallback(() => {
     axios.get(`${API}/api/custody`)
       .then(r => setCustodyLogs(r.data))
       .catch(err => console.error("[Custody] Load failed", err))
-  }
+  }, [])
 
   useEffect(() => {
     const timer = setInterval(() => setCurrentTime(new Date()), 1000)
@@ -305,7 +305,7 @@ export default function Dashboard() {
     axios.get(`${API}/api/dashboard`).then(r => setStats(r.data)).catch(() => {})
     axios.get(`${API}/api/alerts`).then(r => setAlerts(r.data)).catch(() => {})
     fetchCustodyLogs()
-  }, [])
+  }, [fetchCustodyLogs])
 
   const handleUploadSubmit = async (pcapFile, keylogFile) => {
     if (!pcapFile) return
